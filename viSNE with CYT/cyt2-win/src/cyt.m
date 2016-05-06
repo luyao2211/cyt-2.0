@@ -4294,6 +4294,199 @@ function lstClusterNum_CreateFcn(hObject, ~, ~)
 
 end
 
+function cmiBeads_Callback(~, ~, ~)
+
+    handles = gethand;
+    sessionData = retr('sessionData');
+    gates = retr('gates');
+    selGates = get(handles.lstGates, 'Value');
+    
+    for i=selGates
+        if isempty(gates{i,4}) % Gate is associated with a file.
+            uiwait(msgbox('Beads Normalization is only done for gates that are associated with a specific file.','Cannot perform transformation on selected files.','modal'));
+            return;
+        end
+    end
+    
+    %begin normalization
+    t = gates(:,4);
+    files = normalize_beads(0,t');
+%     files = {};
+%     for i = 1:length(t)
+%         tt = t{i};
+%         files{1,i} = ['normalized_' tt];
+%     end
+    %reload normed_files
+    [path, ~, ext] = fileparts(files{1});
+    put('currentfolder', [path filesep]);
+    
+    if (strcmp(ext, '.txt')) 
+        % assume all files were txt based and we're loading from SCRATCH
+        hWaitbar = waitbar(0,'reading txt files ...');
+        tic
+        fcsdats = cellfun(@dlmread, files, 'UniformOutput', false);
+        disp(sprintf('Files loaded: %gs',toc));
+
+        sessionData = zeros(0, size(fcsdats{1}, 2));
+        gates = cell(numel(fcsdats),4);
+        waitbar(0.5, hWaitbar, 'Adding data to session ...')
+        for i=1:numel(fcsdats)
+            
+            [~, fcsname, ~] = fileparts(files{i}); 
+            
+            %-- add data to giant matrix
+            currInd = size(sessionData, 1);
+            sessionData(currInd+1:currInd+size(fcsdats{i},1), 1:size(fcsdats{i},2)) = fcsdats{i}(:, :);
+            
+            gates{i, 1} = char(fcsname);
+            gates{i, 2} = currInd+1:currInd+size(fcsdats{i},1);
+            gates{i, 3} = strcat({'channel '},int2str((1:size(fcsdats{i},2)).'))';
+            gates{i, 4} = files{i}; % opt cell column to hold filename
+        end
+    elseif (strcmp(ext, '.h5')) % for prisca: assume only 1 file, empty session data
+        [~, fcsname, ~] = fileparts(files{1}); 
+        tic;
+        hWaitbar = waitbar(0,'reading h5 file ...');
+        info = h5info(files{1});
+        sessionData = h5read(files{1}, [info.Name info.Datasets.Name]);
+        disp(sprintf('File loaded: %gs',toc));
+        
+        gates = cell(1,4);
+        gates{1, 1} = char(fcsname);
+        gates{1, 2} = 1:size(sessionData,1);
+        gates{1, 3} = strcat({'channel '},int2str((1:size(sessionData,2)).'))';
+        gates{1, 4} = files{1}; % opt cell column to hold filename
+    elseif (strcmp(ext, '.csv'))
+
+        hWaitbar = waitbar(0,'reading csv files...');
+        tic
+        
+        
+        %Read in header
+        fids = cellfun(@(f) fopen(f, 'r'), files, 'UniformOutput', false);  %opening files
+        csvheaders = cellfun(@(f) fgetl(f), fids, 'UniformOutput', false);   %readinf first line in file
+        cellfun(@(f) fclose(f), fids, 'UniformOutput', false);  %closing files
+        
+        %Convert  header to cell array
+        csvheaders = cellfun(@(h) regexp(h, '([^,]*)', 'tokens'), csvheaders, 'UniformOutput', false);
+        csvheaders = cellfun(@(h) cat(2, h{:}), csvheaders, 'UniformOutput', false);
+        
+
+        %Read in data    
+        csvdats = cellfun(@(fname) csvread(fname, 1,1), files, 'UniformOutput', false);
+        
+        %Add data to session
+        disp(sprintf('Files loaded: %gs',toc));
+
+        sessionData = zeros(0, size(csvdats{1}, 2));
+        gates = cell(numel(csvdats),4);
+        waitbar(0.5, hWaitbar, 'Adding data to session ...')
+        for i=1:numel(csvdats)
+            
+            [~, csvname, ~] = fileparts(files{i}); 
+            
+            %-- add data to giant matrix
+            currInd = size(sessionData, 1);
+            sessionData(currInd+1:currInd+size(csvdats{i},1), 1:size(csvdats{i},2)) = csvdats{i}(:, :);
+            
+            gates{i, 1} = char(csvname);
+            gates{i, 2} = currInd+1:currInd+size(csvdats{i},1);
+            gates{i, 3} = csvheaders{i};
+%             gates{i, 3} = strcat({'channel '},int2str((1:size(csvdats{i},2)).'))';
+            gates{i, 4} = files{i}; % opt cell column to hold filename
+        end
+        
+    else% assume files are fcs format (the only officialy supported format
+        
+        tic
+        [fcsdats fcshdrs]=cellfun(@fca_readfcs, files, 'UniformOutput', false);
+        %cdatas = cellfun(@cytof_data, files, 'UniformOutput', false );
+
+        disp(sprintf('Files loaded: %gs',toc));
+
+        tic
+        % find out how many 'channels' to allocated
+        y = 0;
+        nfcs = size(fcsdats, 2);
+        hWaitbar = waitbar(0,'Allocating space for session data ...');
+        for i=1:nfcs
+            waitbar(i/nfcs, hWaitbar);
+            y = max([y size(fcsdats{i}, 2)]);
+        end
+
+        % read all data to one huge matrix
+        % and defined gates according to each filename
+        sessionData  = retr('sessionData');
+        if (isempty(sessionData)) 
+            sessionData = zeros(0, y);
+            gates = cell(nfcs,4);
+            last_gate_ind = 0;
+        else 
+            gates = retr('gates');
+            last_gate_ind = size(gates, 1);
+
+            % if we're adding gates that have extra channels. like after the
+            % user has ran tSNE or something like that
+            if (size(sessionData, 2)< y) 
+                sessionData(:, end+1:y) = zeros(size(sessionData,1), y - size(sessionData,2));
+            end
+        end
+        disp(sprintf('Allocated space for data: %gs',toc));
+
+        tic
+        waitbar(0, hWaitbar, 'Adding data to session ...')
+        for i=1:nfcs
+
+            %-- add data to giant matrix
+            currInd = size(sessionData, 1);
+            sessionData(currInd+1:currInd+size(fcsdats{i},1), 1:size(fcsdats{i},2)) = fcsdats{i}(:, :);
+
+            %-- save files as gates
+            [~, fcsname, ~] = fileparts(files{i}); 
+            gates{last_gate_ind+i, 1} = char(fcsname);
+            gates{last_gate_ind+i, 2} = currInd+1:currInd+size(fcsdats{i},1);
+%           gates{last_gate_ind+i, 3} = cdatas{i}.channel_name_map;        
+            gates{last_gate_ind+i, 3} = get_channelnames_from_header(fcshdrs{i});        
+            gates{last_gate_ind+i, 4} = files{i}; % opt cell column to hold filename
+
+            waitbar(i-1/nfcs, hWaitbar, sprintf('Adding %s data to session  ...', gates{last_gate_ind+i, 1}));
+        end
+        disp(sprintf('Read data into session: %gs',toc));
+
+    end
+	waitbar(1, hWaitbar, 'Saving ...');
+
+    % save the huge matrix, gates and use default empty gate
+    put('sessionData', sessionData);
+    put('gates', gates);
+    
+    set(handles.lstGates,'Value',[]); % Add this line so that the list can be changed
+    set(handles.lstGates,'String',gates(:, 1));
+    set(handles.lstIntGates,'Value',[]); % Add this line so that the list can be changed
+    set(handles.lstIntGates,'String',gates(:, 1));
+    
+    set(handles.lstChannels,'Value',[]); % Add this line so that the list can be changed
+
+    set(handles.lstCluChannels,'Value',1);
+    set(handles.lstCluChannels,'String',[]); % Add this line so that the list can be changed
+    set(handles.lstClusterNum, 'Value',1);
+    set(handles.lstClusterNum,'String',[]); % Add this line so that the list can be changed
+    
+    % make sure axis popups are visible and filled out
+    set(handles.plotChannels, 'Visible','on','Enable','on');
+    set(handles.pupPlotType, 'Visible','on','Enable','on');
+    
+    set(handles.lstGates,'Value',1);
+    set(handles.lstChannels,'Value',[]);
+    
+    lstGates_Callback;
+    lstChannels_Callback;
+    
+    close(hWaitbar);
+    
+
+end
+
 function cmiTransformGate_Callback(~, ~, ~)
     handles = gethand;
     sessionData = retr('sessionData');
