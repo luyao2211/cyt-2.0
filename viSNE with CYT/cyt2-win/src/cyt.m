@@ -4944,6 +4944,206 @@ function cmiSubsample_Callback(isSubsampleEach)
     end
 end
 
+
+% ---
+% Density-based subsample default from each file
+% SPADE manner
+
+function cmiDBSubsample_Callback(~)
+
+    handles = gethand;
+    gateContext    = retr('gateContext');
+    selected_gates = get(handles.lstGates, 'Value');
+    
+%     handles = gethand;
+    sessionData = retr('sessionData');
+    gates = retr('gates');
+    
+%     used_markers = 0;
+%     selGates = get(handles.lstGates, 'Value');
+
+        try
+%             if isSubsampleEach
+%                 txt = sprintf('You have currently selected %g points.\n\rEnter sample size: ', numel(gateContext));
+%             else
+%                 txt = sprintf('You have currently selected %g gates, a total of %g points.\n\rEnter a sample size for each file: ', numel(selected_gates), numel(gateContext));
+%             end
+            
+%             str_sample_size = inputdlg(...
+%                         sprintf(txt, numel(gateContext)),...
+%                         'Sample', 1, {num2str(min(2000, floor(numel(gateContext)*.20)))});
+            
+            db_params = density_subsample_params([]);
+
+
+            if (isempty(db_params) || str2double(db_params.number) == 0 || str2double(db_params.arcsinh_factor) == 0 )
+                return;
+            end
+            
+            %config params
+            
+        % while inserting non-legal number, an error msg will pop up
+        catch e
+            errordlg('Please anter a valid number','Wrong Input');
+            return; 
+        end
+        
+    for i=selected_gates
+        if (~exist('cofactor', 'var'))
+        % asuume all the gated selected has same channels and use the
+        % channel name from the first selected gate
+            [cofactor selectedChannels isDnagate isSaveout isOriginal isPrefix strPrefix] = ...
+                Preprocess('selectchannels', gates{i, 3});
+            if cofactor == 0
+                return;
+            end
+            hwaitbar = waitbar(0, 'downsampling ...')
+        end
+        waitbar((find(selected_gates == i)*2-1)/(numel(selected_gates)*2), hwaitbar, sprintf('transforming %s', gates{i,1}));
+        setStatus(sprintf('transforming %s', gates{i,1}));
+
+        data = sessionData(gates{i, 2}, :)';  
+        % transpose for scaling to another code style
+%         data = gateData(:,selectedChannels);
+%         marker_names = gates{};
+        %do transform and normalization
+        switch db_params.transformation_option
+            case 1, 
+                fprintf('No transofrmation performed\n');
+    %             data = fcsdat'; 
+    %             clear('fcsdat');
+            case 2, 
+                fprintf(['arcsinh transformation with cofactor ',num2str(db_params.arcsinh_factor),'\n']);
+                data = flow_arcsinh(data,db_params.arcsinh_factor); 
+    %             data = flow_arcsinh(fcsdat',handles.arcsinh_cofactor); 
+    %             clear('fcsdat');
+            case 3, 
+%                 display('3');
+                fprintf(['arcsinh transformation with cofactor ',num2str(db_params.arcsinh_factor),', followed by 0-mean-1-var normalization \n']);
+                data = SPADE_per_gene_normalization(flow_arcsinh(data,db_params.arcsinh_factor)); 
+    %             data = SPADE_per_gene_normalization(flow_arcsinh(fcsdat',handles.arcsinh_cofactor)); 
+    %             clear('fcsdat');
+            otherwise, 1;
+        end
+        
+%         [C,IA,IB] = intersect(marker_names, handles.used_markers);
+%         used_markers = handles.used_markers;
+        IA = selectedChannels;
+        fprintf('Compute local density for each cell in this file\n')
+        
+        new_data = data(:,1:min(size(data,2),2000));  %% NOTE: this should be 2000, need to alter back later
+        
+        fprintf('  calculate median min dist ...')
+        
+        tic; [min_dist,NN_ind] = compute_min_dist_downsample(new_data(IA,:),data(IA,1:min(size(data,2),500000)));toc  % since new_data is part of data, this function does not compute min L1 dist. It computes the min non-zero distance, because there will be one 0. However, this creates a problem, what if the data simply contains a lot of identical entries, and result in multiple 0's? This code ignores them all, because this being zero does no good to the subsequent definination of neighborhood 
+        
+        median_min_dist = median(min_dist);
+        
+        kernel_width = median_min_dist * db_params.kernel_width_factor;
+        optimizaiton_para = median_min_dist * db_params.density_estimation_optimization_factor;
+        
+        fprintf('  calculate local densities ...')
+        
+        tic; [local_density] = compute_local_density(data(IA,:), kernel_width, optimizaiton_para); toc
+
+%         save(mat_filename, 'data', 'marker_names', 'used_markers', 'local_density', 'kernel_width');
+
+%         clear( 'data', 'marker_names', 'used_markers', 'local_density', 'kernel_width');
+        %
+        
+        
+        
+        % remove outliers
+        if db_params.outlier_density>0
+            outlier_density = prctile(local_density,db_params.outlier_density);
+            data(:,local_density<=outlier_density)=[];
+            local_density(local_density<=outlier_density)=[];
+        end
+        
+        
+        
+        % compute target density
+        switch db_params.target_density_mode
+        case 1
+            target_density = prctile(local_density,db_params.target_density);
+        case 2
+            num_desired_cells = db_params.target_cell_number;
+            target_density = downsample_to_certain_num_cells(data, local_density, num_desired_cells);
+        otherwise
+            1;
+        end
+        
+
+        tic;
+        is_keep = logical(deterministic_downsample_to_target_density(data(IA,:), local_density, target_density));
+        toc;
+        display([num2str(sum(is_keep)),' cells keeped in this fcs file'])
+        display(' ');
+        data = data(:,is_keep);
+        local_density = local_density(is_keep)/length(is_keep)*RefDataSize;
+
+    
+    end
+        
+        
+        % pass the params and gateData to do downsampling
+    
+%     if isSubsampleEach
+%         prefix = inputdlg('Enter a prefix for sample names',...
+%                 'Gate name prefix', 1, {'sample_'});
+%             
+%         if isempty(prefix)
+%             return;
+%         end
+%         
+%         gates = retr('gates');
+%         
+%         %call another window to choose channels
+%         
+%         
+%         
+%         
+%         %
+%         channel_names = retr('channelNames');
+%         
+%         
+%         %for every gate
+%             %calculate od and some other things button1
+%             %downsample botton2
+%         for i=selected_gates
+%             gateInds = intersect(gates{i, 2}, gateContext);
+%             rand_sample = randsample(gateInds, min(sample_size, length(gateInds)));
+%             gate_channel_names = gates{i, 3};
+%             if numel(channel_names) > numel(gate_channel_names)
+%                 gate_channel_names = channel_names;
+%             end
+%             createNewGate(rand_sample, gate_channel_names, {sprintf('%s%s', prefix{1}, gates{i, 1})});
+%             gates = retr('gates');
+% %             set(handles.lstGates, 'String', gates(:, 1));
+% %             set(handles.lstIntGates, 'String', gates(:, 1));
+%         end
+%     else 
+%         rand_sample = randsample(gateContext, min(sample_size, length(gateContext)));
+%         createNewGate(rand_sample, retr('channelNames'));
+% 
+%         gates = retr('gates');
+% %         set(handles.lstGates, 'String', gates(:, 1));
+% %         set(handles.lstIntGates, 'String', gates(:, 1));
+% 
+%         % if more than one gate was selected - add a channel 'gate source'
+%         if numel(selected_gates) > 1
+%             sessionData = retr('sessionData');
+%             v = zeros(size(sessionData,1), 1);
+% 
+%             for j=selected_gates
+%                 v(gates{j, 2}) = j;
+%             end
+%             put('sessionData', sessionData);
+%             addChannels({'gate_source'}, v(:), 1:numel(v), size(gates, 1));
+%         end
+%     end
+end
+
 % ----
 % gate_indices - the indices in session_data that the gate points to
 % channel_names - cell array of strings
