@@ -4954,7 +4954,7 @@ function cmiDBSubsample_Callback(~)
     handles = gethand;
     gateContext    = retr('gateContext');
     selected_gates = get(handles.lstGates, 'Value');
-    
+    channel_names = retr('channelNames');
 %     handles = gethand;
     sessionData = retr('sessionData');
     gates = retr('gates');
@@ -4976,7 +4976,7 @@ function cmiDBSubsample_Callback(~)
             db_params = density_subsample_params([]);
 
 
-            if (isempty(db_params) || str2double(db_params.number) == 0 || str2double(db_params.arcsinh_factor) == 0 )
+            if (isempty(db_params) || str2double(db_params.target_cell_number) == 0 || str2double(db_params.arcsinh_factor) == 0 )
                 return;
             end
             
@@ -5080,9 +5080,22 @@ function cmiDBSubsample_Callback(~)
         display([num2str(sum(is_keep)),' cells keeped in this fcs file'])
         display(' ');
         data = data(:,is_keep);
+        IC = find(is_keep);
+        % change from the index inside single gate to index in the whole
+        % session
+        IC = gates{i,2}(:,IC);
+        RefDataSize = size(data,2);
         local_density = local_density(is_keep)/length(is_keep)*RefDataSize;
 
-    
+        gate_channel_names = gates{i, 3};
+        if numel(channel_names) > numel(gate_channel_names)
+            gate_channel_names = channel_names;
+        end
+        createNewGate(IC, gate_channel_names, {sprintf('%s%s', 'DBsample_', gates{i, 1})});
+        gates = retr('gates');
+%         set(handles.lstGates, 'String', gates(:, 1));
+%         set(handles.lstIntGates, 'String', gates(:, 1));
+        
     end
         
         
