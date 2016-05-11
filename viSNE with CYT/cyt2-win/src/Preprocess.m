@@ -65,6 +65,23 @@ function Preprocess_OpeningFcn(hObject, eventdata, handles, varargin)
              case 'channelnames'
               set(handles.lstAllChannels, 'String', varargin{index+1});
               set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+             case 'selectchannels'
+              set(handles.lstAllChannels, 'String', varargin{index+1});
+              set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+              set(handles.uipanel1, 'Visible', 'off');
+              set(handles.chkDNAGate, 'Visible', 'off');
+              set(handles.chkSaveGate, 'Visible', 'off');
+              set(handles.chkOriginal, 'Visible', 'off');
+              set(handles.chkPrefix, 'Visible', 'off');
+              set(handles.txtPrefix, 'Visible', 'off');
+%               uipanel1
+%               chkDNAGate
+%               chkSaveGate
+%               chkOriginal
+%               chkPrefix
+%               txtPrefix
+              set(handles.text5, 'String', 'choose channels you want to downsamle with');
+              
             end
         end
     end
