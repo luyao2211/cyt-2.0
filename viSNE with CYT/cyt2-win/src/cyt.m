@@ -148,6 +148,8 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
 
     case5PlotTypes = {...	% plot options for cluster
           'Plot Heat Map',           @plot_cluster_heat_map;
+          'Build MST',               @plot_cluster_heat_map;
+          'SPADE results',           @plot_cluster_heat_map;
           'Plot Cluster bh-SNE',     @plot_cluster_tsne};
 %          'Plot sample clusters',   @plot_sample_clusters;
 %          'Plot meta clusters',     @plot_meta_clusters};
@@ -4069,6 +4071,9 @@ function btnCluster_Callback(hObject, ~, ~)
         set(handles.lstChannels, 'Position', pos);
         set(handles.lstCluChannels, 'Visible', 'on');
         set(handles.cmiMetaCluster, 'Enable', 'on');
+        
+        set(handles.btn_SARA, 'Visible', 'on');
+        set(handles.btn_SARA, 'Visible', 'on');
     else
     	% Toggle button is not pressed-take appropriate action
         set(hObject, 'cdata', brighten(double(get(hObject, 'cdata')), double(double(0.5))));
@@ -4080,6 +4085,8 @@ function btnCluster_Callback(hObject, ~, ~)
   
         set(handles.lstCluChannels, 'Visible', 'off');
         set(handles.cmiMetaCluster, 'Enable', 'off');
+        
+        set(handles.btn_SARA, 'Visible', 'off');
     end
     
     lstChannels_Callback;
