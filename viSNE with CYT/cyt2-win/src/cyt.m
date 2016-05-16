@@ -6139,6 +6139,46 @@ function phenoEach
         close(hWaitbar);
     end
 end
+
+function runSPADE
+    handles = gethand;
+    % handle initialize
+    handles.all_markers = cell(0);
+    handles.all_overlapping_markers = cell(0);
+    handles.used_markers = cell(0);
+    handles.apply_compensation = 0;
+    handles.transformation_option = 1;
+    handles.arcsinh_cofactor = 5;
+    handles.kernel_width_factor = 5;
+    handles.density_estimation_optimization_factor = 1.5;
+    handles.outlier_density = 1;
+    handles.target_density_mode = 2;
+    handles.target_density = 3;
+    handles.target_cell_number = 20000;
+    handles.max_allowable_events = 50000;
+    handles.number_of_desired_clusters = 100;
+    handles.clustering_algorithm = 'kmeans';
+    
+    gate = retr('gates');
+    handles.file_annot = gate(:,1);
+    handles.file_used_to_build_SPADE_tree = gate(:,1);
+    
+    channel_names = retr('channelNames')';
+    handles.all_overlapping_markers = channel_names;
+    [C,I] = setdiff(channel_names, handles.all_markers);
+    if ~isempty(I)
+        handles.all_markers = [handles.all_markers;channel_names(sort(I))]; %all_markers
+    end
+    selected_channels = get(handles.lstChannels, 'Value');
+    selected_channel_names = channel_names(selected_channels, 1);
+    [C,I] = setdiff(selected_channel_names, handles.used_markers);
+    if ~isempty(I)
+        handles.used_markers = [handles.used_markers;selected_channel_names(sort(I))]; %used_markers
+    end
+    [C,IA,IB] = intersect(handles.all_overlapping_markers, channel_names);
+    handles.all_overlapping_markers = handles.all_overlapping_markers(sort(IA)); %all_overlapping_markers
+    out=View_Edit_SPADE_parameters(handles);
+end
                                                                       
 function kmeansEach
     handles = gethand; % GUI handles to retrieve info from gui as below
