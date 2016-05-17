@@ -525,9 +525,10 @@ end
     % copy figure
     archstr = computer('arch');
     if strcmp(archstr(1:end-2),'win')
-        hac = get(gca,'Children');
+        ha = get(gca,'Children');
+        F = getframe
 %         ha = get(gca);
-        ha = gca;
+        ha = get(gca);
         ytickl = get(gca,'Yticklabel');
         xtickl = get(gca,'Xticklabel');
         xtick = get(gca,'xtick');
@@ -537,7 +538,7 @@ end
         figure
         f_new = axes;
         movegui(f_new,'northwest'); 
-        copyobj(hac, f_new);
+        copyobj(ha, f_new);
         colormap(map);
 
         set(gca,'Yticklabel',ytickl);
