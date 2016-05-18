@@ -170,12 +170,35 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
                'All' '.*'};
     set(handles.lstRegexps, 'String', regexps(:, 1));
 	put('regexps', regexps);
-
+    handles.edge_handle = [];
+    handles.edge_begin_end = [];
+    handles.node_handle = [];
+    set(handles.edge_handle,'Value',[]);
+    set(handles.edge_handle,'Value',[]);
+    set(handles.edge_handle,'Value',[]);
     % Update handles structure
     guidata(hObject, handles);
     
     % set defaults
     set(0,'DefaultTextInterpreter','None');
+    
+    
+    
+    % set params for MST
+
+%     handles.GETRECT_H1 = [];
+%     handles.GETRECT_H2 = [];
+%     handles.mouse_selected_nodes = [];
+%     handles.mouse_down_position=[];
+%     handles.is_mouse_down = 0; % 0 means mouse not down, while 1 means mouse down
+%     handles.is_mouse_down_and_moved=0;
+%     handles.is_ctrl_down = 0;  
+%     handles.is_shift_down = 0; 
+%     handles.mouse_mode = []; % selection, move 
+%     handles.show_annotation = 0;  % 0 = no show; 1 = show all; 2 = show selected
+%     handles.color_definition = 0; % 0 = expr; 1 = ratio; 2 = cell freq
+%     handles.color_scheme = 0;     % 0 = JET; 1 = half JET; 2 = gray scale
+%     guidata(hObject, handles);
     
 end
 
@@ -532,6 +555,8 @@ end
         xtickl = get(gca,'Xticklabel');
         xtick = get(gca,'xtick');
         ytick = get(gca,'ytick');
+        XLim = get(gca,'XLim');
+        YLim = get(gca,'YLim');
         map = colormap;
 
         figure
@@ -544,6 +569,8 @@ end
         set(gca,'Xticklabel',xtickl);
         set(gca,'xtick',xtick);
         set(gca,'ytick',ytick);
+        set(gca,'XLim',XLim);
+        set(gca,'YLim',YLim);
 %         ha = gca;
 %         hap = get(ha,'parent');
 %         hapc = get(hap,'children')
@@ -1426,17 +1453,29 @@ function plot_cluster_MST
 
     try
         % Compute tSNE map over centroids
-        if (size(centroids, 1) > 10)
-            tSNE_out = fast_tsne(centroids, [], 5);    %running tSNE on centroids
-        else
-            tSNE_out = tsne(centroids, [], 2, size(centroids,2));  
-        end
+%         if (size(centroids, 1) > 10)
+%             tSNE_out = fast_tsne(centroids, [], 5);    %running tSNE on centroids
+%         else
+%             tSNE_out = tsne(centroids, [], 2, size(centroids,2));  
+%         end
         % compute MST
-        [adj,adj2, cost_value] = mst_from_dist_matrix(dist(centroids'));
+        % default local density is #cells in each cluster
+        tmp = session_data(gate_context, cluster_channel);
+        local_density = zeros(1,length(gate_context))
+        for i =1:1:length(local_density)
+            local_density(1,i) = cellsInCluster(tmp(i));
+        end
+        
+        %calculate MST
+        [mst_tree,adj2] = SPADE_mst_from_contact_weights(session_data(gate_context, cluster_channel)',...
+                                                          session_data(gate_context, selected_channels)',...
+                                                          local_density,...
+                                                          ones(length(gate_context),1));
+%         [adj,adj2, cost_value] = mst_from_dist_matrix(dist(centroids'));
 %         draw_SPADE_tree(adj2, tSNE_out, cluster_sizes, node_data, data, show_color, show_annotation,is_selected, color_scheme);
     catch e
         msgbox(sprintf(...
-                ['tSNE Failed: There was a problem with generating tSNE'  ...
+                ['Building MST Failed: There was a problem with generating MST'  ...
                 ' from these %g cluster centroids.\n Possible causes are' ...
                 ' inssuficient number of centroids or illegal cyt installation path.'],...
                 size(centroids,1)),...
@@ -1445,6 +1484,61 @@ function plot_cluster_MST
         return;
     end
     
+    %calucuting node positions for visualization
+    node_positions = radio_layout(mst_tree,centroids');
+
+
+    % normalize node positions
+    node_positions = node_positions - repmat((max(node_positions,[],2)+min(node_positions,[],2))/2,1,size(node_positions,2));
+    node_positions = node_positions/max(abs(node_positions(:)))*50;
+    % rotate so that the highest density point is in the west
+    node_local_density = accumarray(session_data(gate_context, cluster_channel), local_density')';
+    % weight_center = sum(node_positions.*repmat(node_local_density,2,1),2)/sum(node_local_density);
+    weight_center = find_highest_density_position(node_positions, node_local_density);
+    tmp_score = zeros(1,360) + Inf;
+    for i=1:360
+        tmp_angle = i/180*pi;
+        tmp = [cos(tmp_angle), sin(tmp_angle); -sin(tmp_angle), cos(tmp_angle)]*weight_center(:);
+        if tmp(1)<0 
+            tmp_score(i)=abs(tmp(2));
+        end
+    end
+    [~,i] = min(tmp_score);
+    tmp_angle = i/180*pi;
+    node_positions = [cos(tmp_angle), sin(tmp_angle); -sin(tmp_angle), cos(tmp_angle)]*node_positions;
+    % flipup to make sure that more density is in the north half
+    if sum(node_local_density(node_positions(1,:)>0 & node_positions(2,:)>0)) < sum(node_local_density(node_positions(1,:)>0 & node_positions(2,:)<0))
+        node_positions(2,:)=-node_positions(2,:);
+    end
+    fprintf('Done\n\n');
+    % [mst_tree,adj2] = mst(node_positions');
+
+
+    % determine initial node_size
+    node_size = zeros(1,size(node_positions,2));
+    idx = session_data(gate_context, cluster_channel)';
+    for i=1:length(node_size), node_size(i) = sum(local_density(idx==i)); end
+    node_size = flow_arcsinh(node_size, median(node_size)/2);
+    node_size = ceil(node_size/max(node_size)*10);
+    node_size(node_size<5)=5;
+    node_size = node_size * 1.2;
+    % initialize annotations
+    tree_annotations = [];
+    tree_bubble_contour = [];
+
+    % save all the params
+%     params_MST.data = data;
+    params_MST.local_density = local_density;
+%     params_MST.marker_names = marker_names;
+%     params_MST.used_markers = used_markers;
+    params_MST.idx = idx;
+    params_MST.mst_tree = mst_tree;
+    params_MST.node_positions = node_positions;
+    params_MST.node_size = node_size;
+    params_MST.tree_annotations = tree_annotations;
+    params_MST.tree_bubble_contour = tree_bubble_contour;
+%     'data', 'local_density', 'marker_names', 'used_markers','idx','mst_tree','node_positions','node_size','tree_annotations','tree_bubble_contour'
+    
     %show density
 %     [~, density, x, y] = kde2d(tSNE_out, 256);
 %     zmin = min(real(double(density(:))));
@@ -1452,7 +1546,7 @@ function plot_cluster_MST
 %     levs = linspace(zmin, zmax, 16 + 2);
 %     contour(x, y, density, levs(2:3:(end-1)), 'LineColor', [.7,.7,.7]);
 %     hold on;
-
+    
     %finding color channel
     color_chan = get(handles.lstTsneColorBy,'Value');        
     color_chan = color_chan-1;
@@ -1461,13 +1555,51 @@ function plot_cluster_MST
     %if isDiscrete(color_chan) && length(unique(session_data(gate_context, color_chan))) < 500,
     if (color_chan<0)
         return;
-    elseif color_chan ==0 % color by gate         
-        tsne_col = cluster_mapping(:,3);
+    elseif color_chan ==0 % color by gate 
+        return;
+        % this is not supported for the time being
+%         tsne_col = cluster_mapping(:,3);
         
-%         scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, (dot_size+31)); %plotting
-        draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet');
-        legend([{'Density'};gate_names], 'Interpreter', 'none');
+%       scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, (dot_size+31)); %plotting
+%         draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet');
+%         legend([{'Density'};gate_names], 'Interpreter', 'none');
     else
+
+%         axes(handles.mainPlot);
+
+
+
+
+        handles.edge_handle = [];
+        handles.edge_begin_end = [];
+        handles.node_handle = [];
+    %     handles.GETRECT_H1 = [];
+    %     handles.GETRECT_H2 = [];
+    %     handles.mouse_selected_nodes = [];
+    %     handles.mouse_down_position=[];
+    %     handles.is_mouse_down = 0; % 0 means mouse not down, while 1 means mouse down
+    %     handles.is_mouse_down_and_moved=0;
+    %     handles.is_ctrl_down = 0;  
+    %     handles.is_shift_down = 0; 
+    %     handles.mouse_mode = []; % selection, move 
+    %     handles.show_annotation = 0;  % 0 = no show; 1 = show all; 2 = show selected
+    %     handles.color_definition = 0; % 0 = expr; 1 = ratio; 2 = cell freq
+    %     handles.color_scheme = 0;     % 0 = JET; 1 = half JET; 2 = gray scale
+%         guidata(hObject, handles);
+        
+        % clear the plot
+        hold off; plot(0,0,'visible','off'); hold on;
+        % draw edges
+        adj = params_MST.mst_tree;
+        coeff = params_MST.node_positions;
+        pairs = SPADE_find_matrix_big_element(triu(adj,1),1);
+        
+        for k=1:size(pairs,1), 
+            handle_tmp = line(coeff(1,pairs(k,:)), coeff(2,pairs(k,:)),'color','g'); 
+            handles.edge_handle = [handles.edge_handle; handle_tmp];
+            handles.edge_begin_end = [handles.edge_begin_end; pairs(k,:)];
+        end
+                
         if isDiscrete(color_chan) %color by cluster (or meta)
             data_col=session_data(gate_context, color_chan);
             tsne_col=zeros(length(centroids),1);
@@ -1486,7 +1618,7 @@ function plot_cluster_MST
             end
             
             %Ignoring cluster 0 after computing the the Meta clusters
-            tSNE_out=tSNE_out(find(tsne_col),:);
+%             tSNE_out=tSNE_out(find(tsne_col),:);
             dot_size=dot_size(find(tsne_col),:);
             tsne_col=tsne_col(find(tsne_col));
 
@@ -1495,15 +1627,16 @@ function plot_cluster_MST
             %Plotting
             
 %             scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, dot_size+31); %plotting
-            draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet');           
+%             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
+            
             check=strfind(channel_names(color_chan),'meta');
             if ~isempty(check{1,1})
                 groups = [repmat('MC ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
             else
                 groups = [repmat('Cluster ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
             end
-            legend([{'Density'}; cellstr(groups)],'Interpreter', 'none');%display legend 1
-
+%             legend([{'Density'}; cellstr(groups)],'Interpreter', 'none');%display legend 1
+            
         else
         
             tsne_col = zeros(size(centroids,1),1);
@@ -1516,20 +1649,33 @@ function plot_cluster_MST
             %making 0.95 quantile most red color and 0.05 quantile most blue color to compensate for outliers
             tsne_col(tsne_col < quantile(tsne_col, 0.05)) = quantile(tsne_col,0.05);
             tsne_col(tsne_col > quantile(tsne_col, 0.95)) = quantile(tsne_col, 0.95);
-%             colormap(jet(40));
+            
             color_map = interpolate_colormap(flip(othercolor('Spectral11')), 64);
             colormap(color_map)
+            for k=1:length(tsne_col), 
+                node_color(k,:) = interp1(((1:size(color_map,1))'-1)/(size(color_map,1)-1),color_map,tsne_col(k));  
+                if sum(isnan(node_color(k,:)))~=0
+                    node_color(k,:) = [1,1,1];
+                end
+            end
+%             colormap(jet(40));
+            for k=1:size(coeff,2),
+                handle_tmp = handles.node_handle(k);
+                if ~isequal(get(handle_tmp,'XData'),coeff(1,k)) || ~isequal(get(handle_tmp,'YData'),coeff(2,k)) || ~isequal(get(handle_tmp,'Marker'),'o') || ~isequal(get(handle_tmp,'MarkerSize'),node_size(k)) || ~isequal(get(handle_tmp,'color'),node_color(k,:)) || ~isequal(get(handle_tmp,'markerfaceColor'),node_color(k,:)) || ~isequal(get(handle_tmp,'markeredgecolor'),node_color(k,:)) 
+                    set(handle_tmp,'XData',coeff(1,k),'YData',coeff(2,k),'Marker','o','markersize',node_size(k), 'color', node_color(k,:), 'markerfacecolor',node_color(k,:),'markeredgecolor',node_color(k,:));
+                end
+            end
 %             scatter(tSNE_out(:,1),tSNE_out(:,2), (dot_size+31), tsne_col, 'fill');
-            draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
+%             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
             colorbar;
             color_chan_names = get(handles.lstTsneColorBy,'String'); 
             title(color_chan_names(color_chan+1));
         end
     end
     
-    put('recenttsne', tSNE_out);
-    xlabel('tSNE1');
-    ylabel('tSNE2');
+%     put('recenttsne', tSNE_out);
+%     xlabel('tSNE1');
+%     ylabel('tSNE2');
     
     
     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
@@ -1537,6 +1683,7 @@ function plot_cluster_MST
     dcm_obj = datacursormode(gcf);
     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
+
 function plot_cluster_tsne
     handles = gethand; 
     
