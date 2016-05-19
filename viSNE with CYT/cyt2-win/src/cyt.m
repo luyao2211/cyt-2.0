@@ -148,7 +148,7 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
 
     case5PlotTypes = {...	% plot options for cluster
           'Plot Heat Map',           @plot_cluster_heat_map;
-          'Build MST',               @plot_cluster_heat_map;
+          'Build MST',               @plot_cluster_MST;
           'SPADE results',           @plot_cluster_heat_map;
           'Plot Cluster bh-SNE',     @plot_cluster_tsne};
 %          'Plot sample clusters',   @plot_sample_clusters;
@@ -170,12 +170,35 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
                'All' '.*'};
     set(handles.lstRegexps, 'String', regexps(:, 1));
 	put('regexps', regexps);
-
+    handles.edge_handle = [];
+    handles.edge_begin_end = [];
+    handles.node_handle = [];
+    set(handles.edge_handle,'Value',[]);
+    set(handles.edge_handle,'Value',[]);
+    set(handles.edge_handle,'Value',[]);
     % Update handles structure
     guidata(hObject, handles);
     
     % set defaults
     set(0,'DefaultTextInterpreter','None');
+    
+    
+    
+    % set params for MST
+
+%     handles.GETRECT_H1 = [];
+%     handles.GETRECT_H2 = [];
+%     handles.mouse_selected_nodes = [];
+%     handles.mouse_down_position=[];
+%     handles.is_mouse_down = 0; % 0 means mouse not down, while 1 means mouse down
+%     handles.is_mouse_down_and_moved=0;
+%     handles.is_ctrl_down = 0;  
+%     handles.is_shift_down = 0; 
+%     handles.mouse_mode = []; % selection, move 
+%     handles.show_annotation = 0;  % 0 = no show; 1 = show all; 2 = show selected
+%     handles.color_definition = 0; % 0 = expr; 1 = ratio; 2 = cell freq
+%     handles.color_scheme = 0;     % 0 = JET; 1 = half JET; 2 = gray scale
+%     guidata(hObject, handles);
     
 end
 
@@ -523,16 +546,53 @@ end
 % --------------------------------------------------------------------  
  function PrintMenuItem_Callback
     % copy figure
-    ha = gca;
-    ha.Parent
-    map = colormap;
+    archstr = computer('arch');
+    if strcmp(archstr(1:end-2),'win')
+        hac = get(gca,'Children');
+%         ha = get(gca);
+        ha = gca;
+        ytickl = get(gca,'Yticklabel');
+        xtickl = get(gca,'Xticklabel');
+        xtick = get(gca,'xtick');
+        ytick = get(gca,'ytick');
+        XLim = get(gca,'XLim');
+        YLim = get(gca,'YLim');
+        map = colormap;
 
-    f_new = figure;
-    movegui(f_new,'northwest'); 
-    copyobj(ha.Parent.Children, f_new);
-    colormap(map);
-    drawnow;
-    
+        figure
+        f_new = axes;
+        movegui(f_new,'northwest'); 
+        copyobj(hac, f_new);
+        colormap(map);
+
+        set(gca,'Yticklabel',ytickl);
+        set(gca,'Xticklabel',xtickl);
+        set(gca,'xtick',xtick);
+        set(gca,'ytick',ytick);
+        set(gca,'XLim',XLim);
+        set(gca,'YLim',YLim);
+%         ha = gca;
+%         hap = get(ha,'parent');
+%         hapc = get(hap,'children')
+%         map = colormap;
+
+%         figure
+%         f_new = axes;
+%         movegui(f_new,'northwest'); 
+%         copyobj(hapc, f_new);
+%         colormap(map);
+
+    else
+        ha = gca;
+        ha.Parent
+        map = colormap;
+
+        f_new = figure;
+        movegui(f_new,'northwest'); 
+        copyobj(ha.Parent.Children, f_new);
+        colormap(map);
+        drawnow;
+    end
     % get new filename
     [filename, pathname, ~] = uiputfile({'*.png;*.eps;*.pdf', 'Image files (.png, .eps,.pdf)';...
                                          '*.png', 'Portable Network Graphics (.png)';...
@@ -1183,6 +1243,12 @@ function plot_cluster_heat_map
         color_map = colormap(gray(64));
     elseif color == 5,
         color_map = interpolate_colormap(othercolor('BuPu7'), 64);
+    elseif color == 6,
+        color_map = interpolate_colormap(flip(othercolor('RdBu10')), 64);
+%         Spectral9 in PhenoGraph was used to profile surface marker heat
+%         map;RdBu10 in Phenograph was used to profile intracellular
+%         signaling these colormaps are recommended to be used in a flipped manner
+
 %     elseif color == 6,
 %         color_map = interpolate_colormap(redbluecmap, 64);
 %        %finding basis for min and max for color scaling
@@ -1281,10 +1347,360 @@ function plot_cluster_heat_map
     
     % show channel information 
     set(gca, 'xtick', []);
-    xticklabel_rotate(1:length(selected_channels),75,strcat(channel_names(selected_channels), {' '}));
+    xticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
     
     xlabel('Channels');
     ylabel('Clusters');
+end
+
+function plot_cluster_MST
+    handles = gethand; 
+    
+    %enable the gating btns in the main tool bar
+    enableGating(handles, 'on');
+    set(handles.btnPickCluster, 'Enable', 'on');
+    
+    %reset choise of the selecting clusters btn
+    set(handles.btnPickCluster, 'State', 'off');
+    
+    % show controls
+    if ~isCtrlPressed
+        set(handles.pnlMetaClusterControls, 'Visible', 'on');
+       
+        %hide cicilia's panels
+        set(handles.popMetaPlotOptions, 'Visible', 'off');
+        set(handles.pnlSingleMetaControls, 'Visible', 'off');
+        set(handles.txtPlotType, 'Visible', 'off');
+        set(handles.txtClusterChannel, 'Visible', 'off');
+        set(handles.txtMetaClusterChannel, 'Visible', 'off');
+        set(handles.lstMetaClusterChannels, 'Visible', 'off');
+        set(handles.lstSingleMetaCluster, 'Visible', 'off');
+        set(handles.lstBasisOfMetaChannel, 'Visible', 'off');
+
+        %Cluster's editing panel will be visible after clicking on the
+        %"edit" btn 
+        set(handles.btnDelCluster, 'Visible', 'off');
+        set(handles.btnMergeCluster, 'Visible', 'off');
+        set(handles.txtClusterNum, 'Visible', 'off');
+        set(handles.lstClusterNum, 'Visible', 'off');
+
+    end
+   
+    %chossing plot place in figure
+ 	hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
+    
+    % clear the figure panel
+    cla;
+    colormap jet;
+    legend('off');
+    colorbar('delete');
+    axis auto;
+    box on;
+
+    %getting all parameters
+    session_data = retr('sessionData'); % all data
+    gates        = retr('gates');
+    gate_context = retr('gateContext'); % indices currently selected
+    if isempty(gate_context)
+        return;
+    end
+    
+    selected_channels = get(handles.lstChannels, 'Value');
+    channel_names     = retr('channelNames');
+    selected_gates    = get(handles.lstGates, 'Value');
+    gate_names        = gates(selected_gates, 1);
+        
+    %find cluster channel
+    selected_list_cluster      = get(handles.lstCluChannels, 'value');
+    cluster_channels      = retr('current_cluster_channels');
+    cluster_channel = cluster_channels(selected_list_cluster);
+        
+    if isempty(selected_list_cluster)
+        uiwait(msgbox('No cluster channel was chosen!','Error','error'));  
+        return; 
+    end
+    
+    
+    %finding indeces of selected samples (currently assuming that no overlap occures between indeces)
+    inds = {};
+    for i=1:length(selected_gates),
+        inds{i} = find(ismember(gate_context, gates{selected_gates(i),2}));
+    end
+    
+    %finding cluster centroids and mapping between clusters
+    [centroids, cluster_mapping,cluster_sizes,cellsInCluster] = compute_cluster_centroids(...
+                                    session_data(gate_context, selected_channels), inds, ...
+                                    session_data(gate_context, cluster_channel)); 
+    
+    %create list of cluster numbers in each selected gate in the panel
+    gateCluStr=[];
+    for i=1:length(cluster_mapping(:,3))
+        gateCluStr{end+1}=sprintf('%s: %g',gate_names{cluster_mapping(i,3)}, cluster_mapping(i,1));
+    end
+    
+    %updating the list with the clustes number in the gui
+    set(handles.lstClusterNum, 'String', gateCluStr);
+                                
+    %parameter in case there are meta clusters                            
+    metaClusters=[];
+    
+    if ~isCtrlPressed
+        set(handles.pnlMetaTsneColor, 'Visible', 'on');
+    end
+    
+    %computing the dot size in the plot by the size of the clusters
+    dot_size = 450/max(cluster_mapping(:,5)) * cluster_mapping(:,5)+5;
+
+    try
+        % Compute tSNE map over centroids
+%         if (size(centroids, 1) > 10)
+%             tSNE_out = fast_tsne(centroids, [], 5);    %running tSNE on centroids
+%         else
+%             tSNE_out = tsne(centroids, [], 2, size(centroids,2));  
+%         end
+        % compute MST
+        % default local density is #cells in each cluster
+        tmp = session_data(gate_context, cluster_channel);
+        local_density = zeros(1,length(gate_context))
+        for i =1:1:length(local_density)
+            local_density(1,i) = cellsInCluster(tmp(i));
+        end
+        
+        %calculate MST
+        [mst_tree,adj2] = SPADE_mst_from_contact_weights(session_data(gate_context, cluster_channel)',...
+                                                          session_data(gate_context, selected_channels)',...
+                                                          local_density,...
+                                                          ones(length(gate_context),1));
+%         [adj,adj2, cost_value] = mst_from_dist_matrix(dist(centroids'));
+%         draw_SPADE_tree(adj2, tSNE_out, cluster_sizes, node_data, data, show_color, show_annotation,is_selected, color_scheme);
+    catch e
+        msgbox(sprintf(...
+                ['Building MST Failed: There was a problem with generating MST'  ...
+                ' from these %g cluster centroids.\n Possible causes are' ...
+                ' inssuficient number of centroids or illegal cyt installation path.'],...
+                size(centroids,1)),...
+               'Error','error');
+        disp(getReport(e,'extended'));
+        return;
+    end
+    
+    %calucuting node positions for visualization
+    node_positions = radio_layout(mst_tree,centroids');
+
+
+    % normalize node positions
+    node_positions = node_positions - repmat((max(node_positions,[],2)+min(node_positions,[],2))/2,1,size(node_positions,2));
+    node_positions = node_positions/max(abs(node_positions(:)))*50;
+    % rotate so that the highest density point is in the west
+    node_local_density = accumarray(session_data(gate_context, cluster_channel), local_density')';
+    % weight_center = sum(node_positions.*repmat(node_local_density,2,1),2)/sum(node_local_density);
+    weight_center = find_highest_density_position(node_positions, node_local_density);
+    tmp_score = zeros(1,360) + Inf;
+    for i=1:360
+        tmp_angle = i/180*pi;
+        tmp = [cos(tmp_angle), sin(tmp_angle); -sin(tmp_angle), cos(tmp_angle)]*weight_center(:);
+        if tmp(1)<0 
+            tmp_score(i)=abs(tmp(2));
+        end
+    end
+    [~,i] = min(tmp_score);
+    tmp_angle = i/180*pi;
+    node_positions = [cos(tmp_angle), sin(tmp_angle); -sin(tmp_angle), cos(tmp_angle)]*node_positions;
+    % flipup to make sure that more density is in the north half
+    if sum(node_local_density(node_positions(1,:)>0 & node_positions(2,:)>0)) < sum(node_local_density(node_positions(1,:)>0 & node_positions(2,:)<0))
+        node_positions(2,:)=-node_positions(2,:);
+    end
+    fprintf('Done\n\n');
+    % [mst_tree,adj2] = mst(node_positions');
+
+
+    % determine initial node_size
+    node_size = zeros(1,size(node_positions,2));
+    idx = session_data(gate_context, cluster_channel)';
+    for i=1:length(node_size), node_size(i) = sum(local_density(idx==i)); end
+    node_size = flow_arcsinh(node_size, median(node_size)/2);
+    node_size = ceil(node_size/max(node_size)*10);
+    node_size(node_size<5)=5;
+    node_size = node_size * 1.2;
+    % initialize annotations
+    tree_annotations = [];
+    tree_bubble_contour = [];
+
+    % save all the params
+%     params_MST.data = data;
+    params_MST.local_density = local_density;
+%     params_MST.marker_names = marker_names;
+%     params_MST.used_markers = used_markers;
+    params_MST.idx = idx;
+    params_MST.mst_tree = mst_tree;
+    params_MST.node_positions = node_positions;
+    params_MST.node_size = node_size;
+    params_MST.tree_annotations = tree_annotations;
+    params_MST.tree_bubble_contour = tree_bubble_contour;
+%     'data', 'local_density', 'marker_names', 'used_markers','idx','mst_tree','node_positions','node_size','tree_annotations','tree_bubble_contour'
+    
+    %show density
+%     [~, density, x, y] = kde2d(tSNE_out, 256);
+%     zmin = min(real(double(density(:))));
+%     zmax = max(real(double(density(:))));
+%     levs = linspace(zmin, zmax, 16 + 2);
+%     contour(x, y, density, levs(2:3:(end-1)), 'LineColor', [.7,.7,.7]);
+%     hold on;
+    
+    %finding color channel
+    color_chan = get(handles.lstTsneColorBy,'Value');        
+    color_chan = color_chan-1;
+    
+    %testing if color_chan is discrete (= maybe cluster channel) or continous (maybe marker channel)
+    %if isDiscrete(color_chan) && length(unique(session_data(gate_context, color_chan))) < 500,
+    if (color_chan<0)
+        return;
+    elseif color_chan ==0 % color by gate 
+        return;
+        % this is not supported for the time being
+%         tsne_col = cluster_mapping(:,3);
+        
+%       scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, (dot_size+31)); %plotting
+%         draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet');
+%         legend([{'Density'};gate_names], 'Interpreter', 'none');
+    else
+
+%         axes(handles.mainPlot);
+
+
+
+
+        handles.edge_handle = [];
+        handles.edge_begin_end = [];
+        handles.node_handle = [];
+    %     handles.GETRECT_H1 = [];
+    %     handles.GETRECT_H2 = [];
+    %     handles.mouse_selected_nodes = [];
+    %     handles.mouse_down_position=[];
+    %     handles.is_mouse_down = 0; % 0 means mouse not down, while 1 means mouse down
+    %     handles.is_mouse_down_and_moved=0;
+    %     handles.is_ctrl_down = 0;  
+    %     handles.is_shift_down = 0; 
+    %     handles.mouse_mode = []; % selection, move 
+    %     handles.show_annotation = 0;  % 0 = no show; 1 = show all; 2 = show selected
+    %     handles.color_definition = 0; % 0 = expr; 1 = ratio; 2 = cell freq
+    %     handles.color_scheme = 0;     % 0 = JET; 1 = half JET; 2 = gray scale
+%         guidata(hObject, handles);
+        
+        % clear the plot
+        hold off; plot(0,0,'visible','off'); hold on;
+        % draw edges
+        adj = params_MST.mst_tree;
+        coeff = params_MST.node_positions;
+        pairs = SPADE_find_matrix_big_element(triu(adj,1),1);
+        
+        for k=1:size(pairs,1), 
+            handle_tmp = line(coeff(1,pairs(k,:)), coeff(2,pairs(k,:)),'color','g'); 
+            handles.edge_handle = [handles.edge_handle; handle_tmp];
+            handles.edge_begin_end = [handles.edge_begin_end; pairs(k,:)];
+        end
+                
+        if isDiscrete(color_chan) %color by cluster (or meta)
+            data_col=session_data(gate_context, color_chan);
+            tsne_col=zeros(length(centroids),1);
+            
+            %choosing colors by clusters
+            for i=1:length(centroids)
+                cluster=cluster_mapping(i,1); % the original cluster of index i in the centroids
+                sel_gates=cluster_mapping(i,3); %the gate in index i in the centroids
+                indicesOfGateI=gates{selected_gates(sel_gates),2}; % indices of gate i in the data
+                cellsOfGateIandCluster=[session_data(indicesOfGateI,cluster_channel)==cluster]; %the cells with the wanted gate and cluster
+                IndCellsOfGateIandCluster= indicesOfGateI(cellsOfGateIandCluster); %their indices
+                
+                % ideally these should be equal on each cluster but we
+                % still take the mean
+                tsne_col(i)=mean(session_data(IndCellsOfGateIandCluster,color_chan));
+            end
+            
+            %Ignoring cluster 0 after computing the the Meta clusters
+%             tSNE_out=tSNE_out(find(tsne_col),:);
+            dot_size=dot_size(find(tsne_col),:);
+            tsne_col=tsne_col(find(tsne_col));
+
+            metaClusters=tsne_col;
+            
+            %Plotting
+            
+%             scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, dot_size+31); %plotting
+%             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
+            
+            check=strfind(channel_names(color_chan),'meta');
+            if ~isempty(check{1,1})
+                groups = [repmat('MC ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
+            else
+                groups = [repmat('Cluster ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
+            end
+%             legend([{'Density'}; cellstr(groups)],'Interpreter', 'none');%display legend 1
+            
+        else
+        
+            tsne_col = zeros(size(centroids,1),1);
+            for i=1:size(centroids,1),
+                sub_data = session_data(gate_context(inds{cluster_mapping(i,3)}),:);
+                tsne_col(i) = mean(sub_data(sub_data(:,cluster_channel) == cluster_mapping(i,4), color_chan));
+                %tsne_col(cluster_mapping(:,1) == i) = median(session_data(session_data(gate_context,cluster_channel) == i,color_chan));
+            end
+
+            %making 0.95 quantile most red color and 0.05 quantile most blue color to compensate for outliers
+            tsne_col(tsne_col < quantile(tsne_col, 0.05)) = quantile(tsne_col,0.05);
+            tsne_col(tsne_col > quantile(tsne_col, 0.95)) = quantile(tsne_col, 0.95);
+            
+            color_map = interpolate_colormap(flip(othercolor('Spectral11')), 64);
+            colormap(color_map)
+            Bound = (max(tsne_col)-min(tsne_col));
+            node_color = zeros(length(tsne_col),3);
+            for k=1:length(tsne_col), 
+%                 node_color(k,:) = interp1(((1:size(color_map,1))'-1)/(size(color_map,1)-1),color_map,tsne_col(k));  
+%                 if sum(isnan(node_color(k,:)))~=0
+%                     node_color(k,:) = [1,1,1];
+%                 end
+                  position = round(size(color_map,1)*tsne_col(k)/Bound);
+                  if position > 64 
+                      position = 64;
+                  elseif position <=0
+                          position = 1;
+                  end
+                  try
+                    node_color(k,:) = color_map(position,:);
+                  catch
+                      position
+                  end
+            end
+
+            for k=1:length(node_size)
+                handle_tmp = plot(coeff(1,k),coeff(2,k),'o','markersize',2*node_size(k), 'color',node_color(k,:), 'markerfacecolor',node_color(k,:),'markeredgecolor',node_color(k,:));
+                set(handle_tmp,'ButtonDownFcn','View_Edit_SPADE_tree_annotation(''edit_tree_NodeButtonDownFcn'',gcbo,[],guidata(gcbo))');
+                handles.node_handle = [handles.node_handle; handle_tmp];
+            end
+%             colormap(jet(40));
+            for k=1:size(coeff,2),
+                handle_tmp = handles.node_handle(k);
+                if ~isequal(get(handle_tmp,'XData'),coeff(1,k)) || ~isequal(get(handle_tmp,'YData'),coeff(2,k)) || ~isequal(get(handle_tmp,'Marker'),'o') || ~isequal(get(handle_tmp,'MarkerSize'),node_size(k)) || ~isequal(get(handle_tmp,'color'),node_color(k,:)) || ~isequal(get(handle_tmp,'markerfaceColor'),node_color(k,:)) || ~isequal(get(handle_tmp,'markeredgecolor'),node_color(k,:)) 
+                    set(handle_tmp,'XData',coeff(1,k),'YData',coeff(2,k),'Marker','o','markersize',node_size(k), 'color', node_color(k,:), 'markerfacecolor',node_color(k,:),'markeredgecolor',node_color(k,:));
+                end
+            end
+%             scatter(tSNE_out(:,1),tSNE_out(:,2), (dot_size+31), tsne_col, 'fill');
+%             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
+            colorbar;
+            color_chan_names = get(handles.lstTsneColorBy,'String'); 
+            title(color_chan_names(color_chan+1));
+        end
+    end
+    
+%     put('recenttsne', tSNE_out);
+%     xlabel('tSNE1');
+%     ylabel('tSNE2');
+    
+    
+    delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
+    
+    dcm_obj = datacursormode(gcf);
+%     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
 
 function plot_cluster_tsne
@@ -1471,7 +1887,9 @@ function plot_cluster_tsne
             %making 0.95 quantile most red color and 0.05 quantile most blue color to compensate for outliers
             tsne_col(tsne_col < quantile(tsne_col, 0.05)) = quantile(tsne_col,0.05);
             tsne_col(tsne_col > quantile(tsne_col, 0.95)) = quantile(tsne_col, 0.95);
-            colormap(jet(40));
+%             colormap(jet(40));
+            color_map = interpolate_colormap(flip(othercolor('Spectral11')), 64);
+            colormap(color_map)
             scatter(tSNE_out(:,1),tSNE_out(:,2), (dot_size+31), tsne_col, 'fill');
             colorbar;
             color_chan_names = get(handles.lstTsneColorBy,'String'); 
@@ -2357,6 +2775,8 @@ function createMeta
     
 end
 
+function createSARA
+end
 function plot_meta_clusters(cluster_channel)
     %fprintf('Meta clusters not implemented yet\n');
     
@@ -4072,8 +4492,8 @@ function btnCluster_Callback(hObject, ~, ~)
         set(handles.lstCluChannels, 'Visible', 'on');
         set(handles.cmiMetaCluster, 'Enable', 'on');
         
-        set(handles.btn_SARA, 'Visible', 'on');
-        set(handles.btn_SARA, 'Visible', 'on');
+%         set(handles.btn_SARA, 'Visible', 'on');
+%         set(handles.btn_SARA, 'Visible', 'on');
     else
     	% Toggle button is not pressed-take appropriate action
         set(hObject, 'cdata', brighten(double(get(hObject, 'cdata')), double(double(0.5))));
@@ -4086,7 +4506,7 @@ function btnCluster_Callback(hObject, ~, ~)
         set(handles.lstCluChannels, 'Visible', 'off');
         set(handles.cmiMetaCluster, 'Enable', 'off');
         
-        set(handles.btn_SARA, 'Visible', 'off');
+%         set(handles.btn_SARA, 'Visible', 'off');
     end
     
     lstChannels_Callback;
