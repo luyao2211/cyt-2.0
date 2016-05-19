@@ -1652,11 +1652,30 @@ function plot_cluster_MST
             
             color_map = interpolate_colormap(flip(othercolor('Spectral11')), 64);
             colormap(color_map)
+            Bound = (max(tsne_col)-min(tsne_col));
+            node_color = zeros(length(tsne_col),3);
             for k=1:length(tsne_col), 
-                node_color(k,:) = interp1(((1:size(color_map,1))'-1)/(size(color_map,1)-1),color_map,tsne_col(k));  
-                if sum(isnan(node_color(k,:)))~=0
-                    node_color(k,:) = [1,1,1];
-                end
+%                 node_color(k,:) = interp1(((1:size(color_map,1))'-1)/(size(color_map,1)-1),color_map,tsne_col(k));  
+%                 if sum(isnan(node_color(k,:)))~=0
+%                     node_color(k,:) = [1,1,1];
+%                 end
+                  position = round(size(color_map,1)*tsne_col(k)/Bound);
+                  if position > 64 
+                      position = 64;
+                  elseif position <=0
+                          position = 1;
+                  end
+                  try
+                    node_color(k,:) = color_map(position,:);
+                  catch
+                      position
+                  end
+            end
+
+            for k=1:length(node_size)
+                handle_tmp = plot(coeff(1,k),coeff(2,k),'o','markersize',2*node_size(k), 'color',node_color(k,:), 'markerfacecolor',node_color(k,:),'markeredgecolor',node_color(k,:));
+                set(handle_tmp,'ButtonDownFcn','View_Edit_SPADE_tree_annotation(''edit_tree_NodeButtonDownFcn'',gcbo,[],guidata(gcbo))');
+                handles.node_handle = [handles.node_handle; handle_tmp];
             end
 %             colormap(jet(40));
             for k=1:size(coeff,2),
@@ -1681,7 +1700,7 @@ function plot_cluster_MST
     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
     
     dcm_obj = datacursormode(gcf);
-    set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
+%     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
 
 function plot_cluster_tsne
