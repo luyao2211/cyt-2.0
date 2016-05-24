@@ -65,7 +65,7 @@ set(handles.listbox_overlapping_markers_used,'string',used_markers_str);
 % initialize the part about compensation
 if ~isfield(handles.mother_window_handles,'apply_compensation')
     handles.mother_window_handles.apply_compensation=0;
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 end
 if handles.mother_window_handles.apply_compensation==0 % no compensation
     set(handles.radiobutton_compensation_ignore,'value',1)
@@ -117,7 +117,7 @@ switch handles.mother_window_handles.clustering_algorithm
         set(handles.radiobutton_5_agglomerative,'value',0);
         handles.mother_window_handles.clustering_algorithm = 'kmeans';
         guidata(hObject,handles); 
-        guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+        guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 end
 % files used or not used to build the SPADE tree
 files_used = handles.mother_window_handles.file_used_to_build_SPADE_tree;
@@ -215,7 +215,7 @@ end
 set(handles.listbox_overlapping_markers_used,'String',used_markers_str);
 handles.mother_window_handles.used_markers = used_markers_str;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 used_markers = handles.mother_window_handles.used_markers;
@@ -248,7 +248,7 @@ end
 set(handles.listbox_overlapping_markers_not_used,'String',not_used_markers_str);
 handles.mother_window_handles.used_markers = used_markers_str;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 used_markers = handles.mother_window_handles.used_markers;
@@ -271,7 +271,7 @@ if isempty(str2num(tmp)) || new_cofactor<=0
 else
 	handles.mother_window_handles.arcsinh_cofactor = new_cofactor;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     arcsinh_cofactor = handles.mother_window_handles.arcsinh_cofactor;
@@ -302,7 +302,7 @@ if handles.mother_window_handles.transformation_option==0
 end
 handles.mother_window_handles.transformation_option=0;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 transformation_option = handles.mother_window_handles.transformation_option;
@@ -321,7 +321,7 @@ if handles.mother_window_handles.transformation_option==1
 end
 handles.mother_window_handles.transformation_option=1;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 transformation_option = handles.mother_window_handles.transformation_option;
@@ -341,7 +341,7 @@ if handles.mother_window_handles.transformation_option==2
 end
 handles.mother_window_handles.transformation_option=2;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 transformation_option = handles.mother_window_handles.transformation_option;
@@ -363,7 +363,7 @@ if isempty(str2num(tmp)) || new_factor<=0
 else
 	handles.mother_window_handles.kernel_width_factor = new_factor;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     kernel_width_factor = handles.mother_window_handles.kernel_width_factor;
@@ -398,7 +398,7 @@ if isempty(str2num(tmp)) || new_factor<=0
 else
 	handles.mother_window_handles.density_estimation_optimization_factor = new_factor;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     density_estimation_optimization_factor = handles.mother_window_handles.density_estimation_optimization_factor;
@@ -430,7 +430,7 @@ if isempty(str2num(tmp)) || new_outlier_density<0 || new_outlier_density>100
 else
 	handles.mother_window_handles.outlier_density = new_outlier_density;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     outlier_density = handles.mother_window_handles.outlier_density;
@@ -456,7 +456,7 @@ if isempty(str2num(tmp)) || new_target_density<=0 || new_target_density>100
 else
 	handles.mother_window_handles.target_density = new_target_density;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     target_density = handles.mother_window_handles.target_density;
@@ -481,7 +481,7 @@ if isempty(str2num(tmp)) || new_target_cell_number<=0 || new_target_cell_number~
 else
 	handles.mother_window_handles.target_cell_number = new_target_cell_number;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     target_cell_number = handles.mother_window_handles.target_cell_number;
@@ -499,7 +499,7 @@ if handles.mother_window_handles.target_density_mode==1
 end
 handles.mother_window_handles.target_density_mode=1;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 target_density_mode = handles.mother_window_handles.target_density_mode;
@@ -518,7 +518,7 @@ if handles.mother_window_handles.target_density_mode==2
 end
 handles.mother_window_handles.target_density_mode=2;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 target_density_mode = handles.mother_window_handles.target_density_mode;
@@ -543,7 +543,7 @@ if isempty(str2num(tmp)) || new_desired_number_of_clusters<=0 || new_desired_num
 else
 	handles.mother_window_handles.number_of_desired_clusters = new_desired_number_of_clusters;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     number_of_desired_clusters = handles.mother_window_handles.number_of_desired_clusters;
@@ -624,7 +624,7 @@ end
 set(handles.listbox_files_used,'String',used_files_str);
 handles.mother_window_handles.file_used_to_build_SPADE_tree = used_files_str;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 file_used_to_build_SPADE_tree = handles.mother_window_handles.file_used_to_build_SPADE_tree;
@@ -656,7 +656,7 @@ end
 set(handles.listbox_files_not_used,'String',not_used_files_str);
 handles.mother_window_handles.file_used_to_build_SPADE_tree = used_files_str;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 file_used_to_build_SPADE_tree = handles.mother_window_handles.file_used_to_build_SPADE_tree;
@@ -676,7 +676,7 @@ if isempty(str2num(tmp)) || new_max_allowable_events<=0 || new_max_allowable_eve
 else
 	handles.mother_window_handles.max_allowable_events = new_max_allowable_events;
     guidata(hObject,handles); 
-    guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+    guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
     % update the parameter file 
     parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
     max_allowable_events = handles.mother_window_handles.max_allowable_events;
@@ -765,7 +765,7 @@ set(handles.radiobutton_4_kmeans,'value',1);
 set(handles.radiobutton_5_agglomerative,'value',0);
 handles.mother_window_handles.clustering_algorithm='kmeans';
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 clustering_algorithm = handles.mother_window_handles.clustering_algorithm;
@@ -785,7 +785,7 @@ set(handles.radiobutton_4_kmeans,'value',0);
 set(handles.radiobutton_5_agglomerative,'value',1);
 handles.mother_window_handles.clustering_algorithm='agglomerative';
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 clustering_algorithm = handles.mother_window_handles.clustering_algorithm;
@@ -814,7 +814,7 @@ if handles.mother_window_handles.apply_compensation==apply_compensation  % if th
 end
 handles.mother_window_handles.apply_compensation = apply_compensation;
 guidata(hObject,handles); 
-guidata(handles.mother_window_handles.button_browse_directory,handles.mother_window_handles);
+guidata(handles.mother_window_handles.cmiSPADE,handles.mother_window_handles);
 % update the parameter file 
 parameter_filename = fullfile(handles.mother_window_handles.directoryname,handles.mother_window_handles.parameter_filename);
 apply_compensation = handles.mother_window_handles.apply_compensation;

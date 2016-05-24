@@ -6812,6 +6812,7 @@ end
 function runSPADE
     handles = gethand;
     % handle initialize
+    handles.directoryname = '';
     handles.all_markers = cell(0);
     handles.all_overlapping_markers = cell(0);
     handles.used_markers = cell(0);
@@ -6827,10 +6828,23 @@ function runSPADE
     handles.max_allowable_events = 50000;
     handles.number_of_desired_clusters = 100;
     handles.clustering_algorithm = 'kmeans';
+    handles.parameter_filename = 'SPADE_parameters.mat';
+    handles.pooled_downsampled_filename = 'SPADE_pooled_downsampled_data.mat';
+    handles.cluster_mst_upsample_filename = 'SPADE_cluster_mst_upsample_result.mat';
+    
+    selectedGates = get(handles.lstGates,'Value');
     
     gate = retr('gates');
-    handles.file_annot = gate(:,1);
-    handles.file_used_to_build_SPADE_tree = gate(:,1);
+    handles.file_annot = gate(selectedGates,1);
+    handles.file_used_to_build_SPADE_tree = gate(selectedGates,1);
+    handles.all_fcs_filenames = gate(selectedGates,1);
+    directorysegment = regexp(gate(1,4),'\\','split');
+    for i=1:1:length(directorysegment{1,1})-1
+        handles.directoryname = [[handles.directoryname,directorysegment{1,1}{1,i}],'\'];
+    end
+    if (isempty(directorysegment{1,1}) == 1)
+        handles.directoryname = cd;
+    end
     
     channel_names = retr('channelNames')';
     handles.all_overlapping_markers = channel_names;
@@ -6846,6 +6860,31 @@ function runSPADE
     end
     [C,IA,IB] = intersect(handles.all_overlapping_markers, channel_names);
     handles.all_overlapping_markers = handles.all_overlapping_markers(sort(IA)); %all_overlapping_markers
+    
+    parameter_filename = fullfile(handles.directoryname,handles.parameter_filename);
+    all_fcs_filenames = handles.all_fcs_filenames;
+    file_annot = handles.file_annot;
+    all_markers = handles.all_markers;
+    all_overlapping_markers = handles.all_overlapping_markers;
+    used_markers = handles.used_markers;
+    apply_compensation = handles.apply_compensation;
+    transformation_option = handles.transformation_option;
+    arcsinh_cofactor = handles.arcsinh_cofactor;
+    kernel_width_factor = handles.kernel_width_factor;
+    density_estimation_optimization_factor = handles.density_estimation_optimization_factor;
+    outlier_density = handles.outlier_density;
+    target_density_mode = handles.target_density_mode;
+    target_density = handles.target_density;
+    target_cell_number = handles.target_cell_number;
+    max_allowable_events = handles.max_allowable_events;
+    number_of_desired_clusters = handles.number_of_desired_clusters;
+    clustering_algorithm = handles.clustering_algorithm;
+    file_used_to_build_SPADE_tree = handles.file_used_to_build_SPADE_tree;
+    save(parameter_filename,'all_fcs_filenames','file_annot','all_markers','all_overlapping_markers', ...
+        'used_markers', 'apply_compensation', 'transformation_option', 'arcsinh_cofactor', 'kernel_width_factor', ...
+        'density_estimation_optimization_factor', 'outlier_density', 'target_density_mode', 'target_density',...
+        'target_cell_number', 'max_allowable_events', 'number_of_desired_clusters', 'file_used_to_build_SPADE_tree','clustering_algorithm');
+    
     out=View_Edit_SPADE_parameters(handles);
 end
                                                                       
