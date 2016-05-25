@@ -6812,6 +6812,7 @@ end
 function runSPADE
     handles = gethand;
     % handle initialize
+    handles.session_data = retr('sessionData')';
     handles.directoryname = '';
     handles.all_markers = cell(0);
     handles.all_overlapping_markers = cell(0);
@@ -6833,8 +6834,10 @@ function runSPADE
     handles.cluster_mst_upsample_filename = 'SPADE_cluster_mst_upsample_result.mat';
     
     selectedGates = get(handles.lstGates,'Value');
-    
     gate = retr('gates');
+    handles.datainfo = gate;
+    handles.selectedGates = selectedGates;
+    handles.gates = gate(selectedGates,2);
     handles.file_annot = gate(selectedGates,1);
     handles.file_used_to_build_SPADE_tree = gate(selectedGates,1);
     handles.all_fcs_filenames = gate(selectedGates,1);
@@ -6847,6 +6850,7 @@ function runSPADE
     end
     
     channel_names = retr('channelNames')';
+    handles.marker_names = channel_names;
     handles.all_overlapping_markers = channel_names;
     [C,I] = setdiff(channel_names, handles.all_markers);
     if ~isempty(I)
@@ -6860,6 +6864,7 @@ function runSPADE
     end
     [C,IA,IB] = intersect(handles.all_overlapping_markers, channel_names);
     handles.all_overlapping_markers = handles.all_overlapping_markers(sort(IA)); %all_overlapping_markers
+    handles.gateContext = retr('gateContext');
     
     parameter_filename = fullfile(handles.directoryname,handles.parameter_filename);
     all_fcs_filenames = handles.all_fcs_filenames;
@@ -6886,6 +6891,7 @@ function runSPADE
         'target_cell_number', 'max_allowable_events', 'number_of_desired_clusters', 'file_used_to_build_SPADE_tree','clustering_algorithm');
     
     out=View_Edit_SPADE_parameters(handles);
+    cc=out;
 end
                                                                       
 function kmeansEach
