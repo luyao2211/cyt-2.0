@@ -67,7 +67,11 @@ function Preprocess_OpeningFcn(hObject, eventdata, handles, varargin)
               set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
              case 'selectchannels'
               set(handles.lstAllChannels, 'String', varargin{index+1});
-              set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+              if ~isempty(varargin{3})
+                  set(handles.lstAllChannels, 'Value',varargin{3});
+              else
+                  set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+              end
               set(handles.uipanel1, 'Visible', 'off');
               set(handles.chkDNAGate, 'Visible', 'off');
               set(handles.chkSaveGate, 'Visible', 'off');
@@ -81,7 +85,26 @@ function Preprocess_OpeningFcn(hObject, eventdata, handles, varargin)
 %               chkPrefix
 %               txtPrefix
               set(handles.text5, 'String', 'choose channels you want to downsamle with');
-              
+             case 'selectgates'
+              set(handles.lstAllChannels, 'String', varargin{index+1});
+%               if ~isempty(varargin{3})
+%                   set(handles.lstAllChannels, 'Value',varargin{3});
+%               else
+%                   set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+%               end
+              set(handles.uipanel1, 'Visible', 'off');
+              set(handles.chkDNAGate, 'Visible', 'off');
+              set(handles.chkSaveGate, 'Visible', 'off');
+              set(handles.chkOriginal, 'Visible', 'off');
+              set(handles.chkPrefix, 'Visible', 'off');
+              set(handles.txtPrefix, 'Visible', 'off');
+%               uipanel1
+%               chkDNAGate
+%               chkSaveGate
+%               chkOriginal
+%               chkPrefix
+%               txtPrefix
+              set(handles.text5, 'String', 'choose ONE gate you regard as Basal and automatically the rest as Stim and your gates are preferred to be subsampled otherwise the calculation would take a long time');              
             end
         end
     end
