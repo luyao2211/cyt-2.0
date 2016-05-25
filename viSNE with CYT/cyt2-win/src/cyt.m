@@ -152,7 +152,7 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
           'Plot Heat Map',           @plot_cluster_heat_map;
           'Build MST',               @plot_cluster_MST;
           'SARA',                    @plot_SARA_heat_map;
-          'SPADE results',           @plot_cluster_heat_map;
+          'SPADE results',           @plot_SPADE_result;
           'Plot Cluster bh-SNE',     @plot_cluster_tsne};
 %          'Plot sample clusters',   @plot_sample_clusters;
 %          'Plot meta clusters',     @plot_meta_clusters};
@@ -1366,6 +1366,20 @@ function plot_cluster_heat_map
     
     xlabel('Channels');
     ylabel('Clusters');
+end
+
+function plot_SPADE_result
+    gate = retr('gates');
+    directory = '';
+    directorysegment = regexp(gate(1,4),'\\','split');
+    for i=1:1:length(directorysegment{1,1})-1
+        directory = [[directory,directorysegment{1,1}{1,i}],'\'];
+    end
+    if (isempty(directorysegment{1,1}) == 1)
+        directory = cd;
+    end
+    input = [directory, 'SPADE_cluster_mst_upsample_result.mat'];
+    out = View_Edit_SPADE_tree_annotation(input);
 end
 
 function plot_cluster_MST
@@ -6835,7 +6849,6 @@ function runSPADE
     
     selectedGates = get(handles.lstGates,'Value');
     gate = retr('gates');
-    handles.datainfo = gate;
     handles.selectedGates = selectedGates;
     handles.gates = gate(selectedGates,2);
     handles.file_annot = gate(selectedGates,1);
@@ -6891,7 +6904,7 @@ function runSPADE
         'target_cell_number', 'max_allowable_events', 'number_of_desired_clusters', 'file_used_to_build_SPADE_tree','clustering_algorithm');
     
     out=View_Edit_SPADE_parameters(handles);
-    cc=out;
+    addChannels({'SPADE'}, out, handles.gateContext);
 end
                                                                       
 function kmeansEach

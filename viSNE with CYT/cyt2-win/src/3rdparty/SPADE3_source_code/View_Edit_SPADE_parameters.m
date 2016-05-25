@@ -125,6 +125,7 @@ files_used = handles.mother_window_handles.file_used_to_build_SPADE_tree;
 files_not_used = handles.mother_window_handles.file_annot(sort(I));
 set(handles.listbox_files_not_used,'string',files_not_used);
 set(handles.listbox_files_used,'string',files_used);
+uiwait(handles.figure1);
 
 % UIWAIT makes View_Edit_SPADE_parameters wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -138,7 +139,7 @@ function varargout = View_Edit_SPADE_parameters_OutputFcn(hObject, eventdata, ha
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
-varargout{1} = handles.output;
+varargout{1} = handles.mother_window_handles.Result;
 
 
 
@@ -708,6 +709,7 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 
 % --- Executes on button press in button_close_parameter_window.
 function button_close_parameter_window_Callback(hObject, eventdata, handles)
+uiresume(handles.figure1);
 delete(handles.figure1);
 % figure1_CloseRequestFcn(handles.figure1, [], handles);
 
@@ -878,7 +880,7 @@ for i=1:length(handles.mother_window_handles.all_fcs_filenames)
     else
         %[data, marker_names, channel_names, scaled_data, compensated_data, fcshdr] = readfcs_v2(fcs_filename);
         %data = compensated_data;
-        data = handles.mother_window_handles.session_data;
+        data = handles.mother_window_handles.session_data(:,handles.mother_window_handles.gates{i,1});
         marker_names = handles.mother_window_handles.marker_names;
     end
     if ~exist(fullfile(handles.mother_window_handles.directoryname,'check_loaded_data'),'dir')
@@ -1178,7 +1180,7 @@ save(fullfile(handles.mother_window_handles.directoryname, handles.mother_window
 all_clustered_data = data;
 all_clustered_data_idx = idx;
 [C,IA1,IB] = intersect(marker_names,used_markers);
-coeff = [];
+handles.mother_window_handles.Result = [];
 for i=1:length(handles.mother_window_handles.all_fcs_filenames)
     indicator_of_this_file = all_clustered_data(end,:)==i;
     if sum(indicator_of_this_file)~=0
@@ -1212,15 +1214,13 @@ for i=1:length(handles.mother_window_handles.all_fcs_filenames)
     toc
     
     all_assign{i} = clustered_data_idx(NN_index);
-    coeff = [coeff,clustered_data_idx(NN_index)];
+    handles.mother_window_handles.Result = [handles.mother_window_handles.Result, all_assign{i}];
 end
-handles.mother_window_handles.session_data(end+1, handles.mother_window_handles.gateContext) = coeff;
-for i=handles.mother_window_handles.selectedGates
-    handles.mother_window_handles.datainfo{i, 3}{1,(end+1)} = 'SPADE';
-end
+
 all_fcs_filenames = handles.mother_window_handles.all_fcs_filenames;
 file_annot = handles.mother_window_handles.file_annot;
 handles.mother_window_handles.all_assign = all_assign;
+handles.mother_window_handles.Result = handles.mother_window_handles.Result';
 
 % build the cell arrary that stores the average protein expression per node per marker per file
 fprintf('\nComputing average protein expression per cluster per marker per file for %d files ... %5d',length(handles.mother_window_handles.all_fcs_filenames)+1,1);
@@ -1270,3 +1270,4 @@ end
 save(fullfile(handles.mother_window_handles.directoryname, handles.mother_window_handles.cluster_mst_upsample_filename), 'all_assign','all_fcs_filenames','file_annot', 'marker_node_average', '-append');
 fprintf('\nDone\n\n')
 guidata(hObject, handles);
+uiresume(handles.figure1);

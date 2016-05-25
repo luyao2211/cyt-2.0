@@ -23,7 +23,7 @@ function varargout = View_Edit_SPADE_tree_annotation(varargin)
 
 % Edit the above text to modify the response to help View_Edit_SPADE_tree_annotation
 
-% Last Modified by GUIDE v2.5 19-Jun-2015 02:38:27
+% Last Modified by GUIDE v2.5 25-May-2016 20:23:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,7 +56,7 @@ function View_Edit_SPADE_tree_annotation_OpeningFcn(hObject, eventdata, handles,
 % Choose default command line output for View_Edit_SPADE_tree_annotation
 handles.output = hObject;
 if length(varargin)~=0
-    handles.cluster_mst_upsample_filename =  varargin{1}{1};
+    handles.cluster_mst_upsample_filename =  varargin{1,1};
 else
     handles.cluster_mst_upsample_filename =  'SPADE_cluster_mst_upsample_result.mat';
 end
@@ -2818,3 +2818,10 @@ else
     guidata(hObject, handles);
     axes(handles.Axes_mst); draw_SPADE_tree_when_update(handles);
 end
+
+
+% --- Executes on button press in pushbutton21.
+function pushbutton21_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton21 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
