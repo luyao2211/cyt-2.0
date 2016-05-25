@@ -86,7 +86,11 @@ function Preprocess_OpeningFcn(hObject, eventdata, handles, varargin)
 %               txtPrefix
               set(handles.text5, 'String', 'choose channels you want to downsamle with');
              case 'selectgates'
-              set(handles.lstAllChannels, 'String', varargin{index+1});
+                 if length( varargin{index+1}) >=1
+                    set(handles.lstAllChannels, 'String', varargin{index+1});
+                 else
+                    set(handles.lstAllChannels, 'Value', 3:size(varargin{index+1}, 2));
+                 end
 %               if ~isempty(varargin{3})
 %                   set(handles.lstAllChannels, 'Value',varargin{3});
 %               else
