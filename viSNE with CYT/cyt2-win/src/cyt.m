@@ -1585,6 +1585,7 @@ function plot_cluster_MST
     if (color_chan<0)
         return;
     elseif color_chan ==0 % color by gate 
+       errordlg('MST dose not support discrete channel');
         return;
         % this is not supported for the time being
 %         tsne_col = cluster_mapping(:,3);
@@ -1630,40 +1631,41 @@ function plot_cluster_MST
         end
                 
         if isDiscrete(color_chan) %color by cluster (or meta)
-            data_col=session_data(gate_context, color_chan);
-            tsne_col=zeros(length(centroids),1);
-            
-            %choosing colors by clusters
-            for i=1:length(centroids)
-                cluster=cluster_mapping(i,1); % the original cluster of index i in the centroids
-                sel_gates=cluster_mapping(i,3); %the gate in index i in the centroids
-                indicesOfGateI=gates{selected_gates(sel_gates),2}; % indices of gate i in the data
-                cellsOfGateIandCluster=[session_data(indicesOfGateI,cluster_channel)==cluster]; %the cells with the wanted gate and cluster
-                IndCellsOfGateIandCluster= indicesOfGateI(cellsOfGateIandCluster); %their indices
-                
-                % ideally these should be equal on each cluster but we
-                % still take the mean
-                tsne_col(i)=mean(session_data(IndCellsOfGateIandCluster,color_chan));
-            end
-            
-            %Ignoring cluster 0 after computing the the Meta clusters
-%             tSNE_out=tSNE_out(find(tsne_col),:);
-            dot_size=dot_size(find(tsne_col),:);
-            tsne_col=tsne_col(find(tsne_col));
-
-            metaClusters=tsne_col;
-            
-            %Plotting
-            
-%             scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, dot_size+31); %plotting
-%             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
-            
-            check=strfind(channel_names(color_chan),'meta');
-            if ~isempty(check{1,1})
-                groups = [repmat('MC ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
-            else
-                groups = [repmat('Cluster ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
-            end
+            h = errordlg('MST dose not support discrete channel')
+%             data_col=session_data(gate_context, color_chan);
+%             tsne_col=zeros(length(centroids),1);
+%             
+%             %choosing colors by clusters
+%             for i=1:length(centroids)
+%                 cluster=cluster_mapping(i,1); % the original cluster of index i in the centroids
+%                 sel_gates=cluster_mapping(i,3); %the gate in index i in the centroids
+%                 indicesOfGateI=gates{selected_gates(sel_gates),2}; % indices of gate i in the data
+%                 cellsOfGateIandCluster=[session_data(indicesOfGateI,cluster_channel)==cluster]; %the cells with the wanted gate and cluster
+%                 IndCellsOfGateIandCluster= indicesOfGateI(cellsOfGateIandCluster); %their indices
+%                 
+%                 % ideally these should be equal on each cluster but we
+%                 % still take the mean
+%                 tsne_col(i)=mean(session_data(IndCellsOfGateIandCluster,color_chan));
+%             end
+%             
+%             %Ignoring cluster 0 after computing the the Meta clusters
+% %             tSNE_out=tSNE_out(find(tsne_col),:);
+%             dot_size=dot_size(find(tsne_col),:);
+%             tsne_col=tsne_col(find(tsne_col));
+% 
+%             metaClusters=tsne_col;
+%             
+%             %Plotting
+%             
+% %             scatter_by_point(tSNE_out(:,1), tSNE_out(:,2), tsne_col, dot_size+31); %plotting
+% %             draw_SPADE_tree(adj2, tSNE_out, (dot_size+31), tsne_col', centroids, 1, 0,[], 'jet'); 
+%             
+%             check=strfind(channel_names(color_chan),'meta');
+%             if ~isempty(check{1,1})
+%                 groups = [repmat('MC ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
+%             else
+%                 groups = [repmat('Cluster ', length(unique(tsne_col)), 1), num2str(unique(tsne_col))];
+%             end
 %             legend([{'Density'}; cellstr(groups)],'Interpreter', 'none');%display legend 1
             
         else
@@ -5845,6 +5847,7 @@ function cmiDBSubsample_Callback(~)
 %             addChannels({'gate_source'}, v(:), 1:numel(v), size(gates, 1));
 %         end
 %     end
+close(hwaitbar);
 end
 
 % ----

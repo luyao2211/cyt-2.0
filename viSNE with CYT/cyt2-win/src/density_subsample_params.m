@@ -54,7 +54,29 @@ function density_subsample_params_OpeningFcn(hObject, eventdata, handles, vararg
 
 % Choose default command line output for density_subsample_params
 handles.output = hObject;
-
+%set default params
+    set(handles.od, 'String', '1');
+    set(handles.td, 'String', '3');
+    set(handles.number, 'String', '0');
+    set(handles.neighsize, 'String', '1.5');
+    set(handles.approfac, 'String', '5');
+    set(handles.ifTD, 'value',1);
+    set(handles.ifnumber, 'value',0);
+    set(handles.trans_option_1, 'value',0);
+    set(handles.trans_option_2, 'value',1);
+    set(handles.trans_option_3, 'value',0);
+    set(handles.arcsinh_factor, 'String', '5');
+%     set(handles.neighsize, 'String', '1.5');
+%     set(handles.approfac, 'String', '5');
+%      ifTD
+%     td
+%     number
+%     neighsize
+%     approfac
+%     trans_option_1
+%     trans_option_2
+%     trans_option_3
+%     arcsinh_factor
 % Update handles structure
 guidata(hObject, handles);
 % guidata(hObject, handles);
@@ -96,7 +118,8 @@ function W = getParams
     
     W.outlier_density = str2double(get(handles.od, 'String'));
 %     W.ifTD = get(handles.ifTD, 'Value');
-    
+     W.target_cell_number = 0;
+     W.target_density = 3;
     if get(handles.ifTD, 'Value')
         W.target_density_mode = 1;% target density
         W.target_density = str2double(get(handles.td, 'String')); 
