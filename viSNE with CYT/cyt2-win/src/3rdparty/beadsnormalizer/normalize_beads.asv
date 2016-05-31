@@ -278,13 +278,11 @@ end
         smoothed=cell(1,num_files);
         normedsmoothed=cell(1,num_files);
         defAns={''};
-        
-        %20160530 all prefix for normalized files
-        prefix = inputdlg(sprintf('Enter a prefix for normalized files: ')); 
-        if (isempty(prefix{:}))
-             return;
+        %20160530
+        new_name = inputdlg(sprintf('Enter a prefix for normalized files %s: '); 
+        if (~isempty(new_name))
+            return
         end
-        
         for i=1:num_files
             file=norm_cytof(filenames{i},sbtrct);
             file=file.find_bead_channels(bead_metals);
@@ -325,7 +323,7 @@ end
             
 %             fca_writefcs([bead_dir f{i}(1:end-4) '_beads.fcs'],bead_data{i}(:,[1 end 2:end-1]),['Time' 'EventNum' file.channelnames(file.bead_channels)],['Time' 'EventNum' file.channelnames(file.bead_channels)],file.header);
 %             fca_writefcs([norm_dir f{i}(1:end-4) '_normalized.fcs'],file.data,file.markernames,file.channelnames,file.header);
-            temp_name = [norm_dir prefix{:} f{i} '_' date];
+            temp_name = [norm_dir 'beadsnormalized_' f{i} '_' date];
             fca_writefcs(temp_name,file.data,file.markernames,file.channelnames,file.header);
             newfns{1,i} = temp_name;
             clear file
