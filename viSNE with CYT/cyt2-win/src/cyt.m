@@ -5692,7 +5692,7 @@ function cmiDBSubsample_Callback(~)
 %     handles = gethand;
     sessionData = retr('sessionData');
     gates = retr('gates');
-    
+    LocalDensity = zeros(1,length(gateContext));
 %     used_markers = 0;
 %     selGates = get(handles.lstGates, 'Value');
 
@@ -5723,7 +5723,7 @@ function cmiDBSubsample_Callback(~)
         end
         
     for i=selected_gates
-        if (~exist('cofactor', 'var'))
+        if (~exist('selectedChannels', 'var'))
         % asuume all the gated selected has same channels and use the
         % channel name from the first selected gate
         
@@ -5733,10 +5733,33 @@ function cmiDBSubsample_Callback(~)
             if cofactor == 0
                 return;
             end
+                    
+            %save regexps
+
+            regexps = retr('regexps');
+            new_regexp = get(handles.txtRegexps, 'String');
+            if isempty(new_regexp) || strcmp(new_regexp, '')
+                % save the currently selected channels
+                names = retr('channelNames');
+                names = names';
+                selected_channels = selectedChannels;
+                selected_names = names(selected_channels);
+                selected_names = strrep(selected_names, '(', '\(');
+                selected_names = strrep(selected_names, ')', '\)');
+                selected_names = strcat(selected_names, '$');
+                selected_names = strcat('^', selected_names);
+                new_regexp = strjoin(selected_names', '|');
+            end
+            regexps{end+1, 1} = [date ' density_based_subsample'];
+            regexps{end, 2} = new_regexp;
+            put('regexps', regexps);
+
+            set(handles.lstRegexps, 'String', regexps(:, 1));
+        
             hwaitbar = waitbar(0, 'downsampling ...')
         end
         waitbar((find(selected_gates == i)*2-1)/(numel(selected_gates)*2), hwaitbar, sprintf('transforming %s', gates{i,1}));
-        setStatus(sprintf('transforming %s', gates{i,1}));
+        setStatus(sprintf('density-based subsampling %s', gates{i,1}));
 
         data = sessionData(gates{i, 2}, :)';  
         % transpose for scaling to another code style
@@ -5768,27 +5791,7 @@ function cmiDBSubsample_Callback(~)
 
 
 
-        %save regexps
 
-        regexps = retr('regexps');
-        new_regexp = get(handles.txtRegexps, 'String');
-        if isempty(new_regexp) || strcmp(new_regexp, '')
-            % save the currently selected channels
-            names = retr('channelNames');
-            names = names';
-            selected_channels = selectedChannels;
-            selected_names = names(selected_channels);
-            selected_names = strrep(selected_names, '(', '\(');
-            selected_names = strrep(selected_names, ')', '\)');
-            selected_names = strcat(selected_names, '$');
-            selected_names = strcat('^', selected_names);
-            new_regexp = strjoin(selected_names', '|');
-        end
-        regexps{end+1, 1} = [date ' density_based_subsample'];
-        regexps{end, 2} = new_regexp;
-        put('regexps', regexps);
-
-        set(handles.lstRegexps, 'String', regexps(:, 1));
     
         %begin subsample    
         IA = selectedChannels;
@@ -5808,16 +5811,19 @@ function cmiDBSubsample_Callback(~)
         fprintf('  calculate local densities ...')
         
         tic; [local_density] = compute_local_density(data(IA,:), kernel_width, optimizaiton_para); toc
-
+        LocalDensity(1,gates{i,2}) = local_density;
 %         save(mat_filename, 'data', 'marker_names', 'used_markers', 'local_density', 'kernel_width');
 
 %         clear( 'data', 'marker_names', 'used_markers', 'local_density', 'kernel_width');
         %
         
-        
+        % used to normalize the local densities for the other files 
+        if i  == selected_gates(1)
+            RefDataSize = size(data,2);
+        end
         
         % remove outliers
-        if db_params.outlier_density>0
+        if db_params.outlier_density > 0
             outlier_density = prctile(local_density,db_params.outlier_density);
             data(:,local_density<=outlier_density)=[];
             local_density(local_density<=outlier_density)=[];
@@ -5836,31 +5842,41 @@ function cmiDBSubsample_Callback(~)
             1;
         end
         
-
+        %downsample
         tic;
         is_keep = logical(deterministic_downsample_to_target_density(data(IA,:), local_density, target_density));
         toc;
         display([num2str(sum(is_keep)),' cells keeped in this fcs file'])
         display(' ');
-        data = data(:,is_keep);
+%         data = data(:,is_keep);
         IC = find(is_keep);
         % change from the index inside single gate to index in the whole
         % session
-        IC = gates{i,2}(:,IC);
-        RefDataSize = size(data,2);
+        if isempty(IC)
+            return
+        end
+        %the sampled new gate indices are transposed and we assume that it
+        %is always a vector
+        IC = gates{i,2}(IC);
+        
         local_density = local_density(is_keep)/length(is_keep)*RefDataSize;
-
+%         LocalDensity = [LocalDensity , local_density];
+        
+        % add local density to a new channel 
+        
         gate_channel_names = gates{i, 3};
         if numel(channel_names) > numel(gate_channel_names)
             gate_channel_names = channel_names;
         end
-        createNewGate(IC, gate_channel_names, {sprintf('%s%s', 'DBsample_', gates{i, 1})});
-        gates = retr('gates');
+        createNewGate(IC, gate_channel_names, {sprintf('%s%s', 'DensitySubsample_', gates{i, 1})});
+%         gates = retr('gates');
 %         set(handles.lstGates, 'String', gates(:, 1));
 %         set(handles.lstIntGates, 'String', gates(:, 1));
         
     end
-        
+    % add local density may drain the memory so ....
+%     addChannels({'Local Density'}, LocalDensity, gateContext);
+  
         
         % pass the params and gateData to do downsampling
     
@@ -5918,7 +5934,7 @@ function cmiDBSubsample_Callback(~)
 %             addChannels({'gate_source'}, v(:), 1:numel(v), size(gates, 1));
 %         end
 %     end
-close(hwaitbar);
+    close(hwaitbar);
 end
 
 % ----
