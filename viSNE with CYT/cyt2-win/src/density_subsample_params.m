@@ -57,7 +57,7 @@ handles.output = hObject;
 %set default params
     set(handles.od, 'String', '1');
     set(handles.td, 'String', '3');
-    set(handles.number, 'String', '0');
+    set(handles.number, 'String', '20000');
     set(handles.neighsize, 'String', '1.5');
     set(handles.approfac, 'String', '5');
     set(handles.ifTD, 'value',1);
@@ -128,8 +128,8 @@ function W = getParams
        W.target_cell_number = str2double(get(handles.number, 'String'));  
     end   
     W.od = str2double(get(handles.od, 'String')); 
-    W.kernel_width_factor = str2double(get(handles.neighsize, 'String'));
-    W.density_estimation_optimization_factor = str2double(get(handles.approfac, 'String'));
+    W.kernel_width_factor = str2double(get(handles.approfac, 'String'));
+    W.density_estimation_optimization_factor = str2double(get(handles.neighsize, 'String'));
     
     if get(handles.trans_option_1,'Value')
         W.transformation_option = 1;
