@@ -57,8 +57,10 @@ function View_Edit_SPADE_tree_annotation_OpeningFcn(hObject, eventdata, handles,
 handles.output = hObject;
 if length(varargin)~=0
     handles.cluster_mst_upsample_filename =  varargin{1,1};
+    handles.gates = varargin{1,2};
+    handles.sessionData = varargin{1,3};
 else
-    handles.cluster_mst_upsample_filename =  'SPADE_cluster_mst_upsample_result.mat';
+    msgbox('No Input is given','Error','error')
 end
 load(handles.cluster_mst_upsample_filename);
 % initialize the values available in this window
@@ -129,6 +131,7 @@ if ~isempty(handles.tree_annotations)
     end
     set(handles.listbox_annotations,'string',tmp,'value',1);
 end
+uiwait(handles.figure1);
 
 
 
@@ -142,7 +145,7 @@ function varargout = View_Edit_SPADE_tree_annotation_OutputFcn(hObject, eventdat
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
-varargout{1} = handles.output;
+varargout{1} = handles.indData;
 
 
 
@@ -1785,6 +1788,7 @@ end
 if exist(fullfile(PATHSTR,'exported_results'))~=7
     mkdir(fullfile(PATHSTR,'exported_results'));
 end
+handles.indData = cell(0);
 for i=1:length(handles.all_existing_files)
     if isequal(handles.all_existing_files{i},'POOLED')
         idx_tmp = handles.clustering_idx;
@@ -1792,19 +1796,25 @@ for i=1:length(handles.all_existing_files)
         marker_names_tmp = handles.clustering_marker_names;
     else
         idx_tmp = handles.all_assign{find(ismember(handles.file_annot,handles.all_existing_files(i))==1)};
-        [data_tmp, marker_names_tmp] = readfcs(fullfile(PATHSTR,handles.all_fcs_filenames{find(ismember(handles.file_annot,handles.all_existing_files(i))==1)}));
+        marker_names_tmp = handles.clustering_marker_names;
+        data_tmp = handles.sessionData(1:length(handles.clustering_marker_names)-1,handles.gates{i-1,1});
     end
     ind = zeros(1,length(idx_tmp));
     for k=1:length(handles.mouse_selected_nodes)
         ind(idx_tmp==handles.mouse_selected_nodes(k))=1;
+    end
+    if ~isequal(handles.all_existing_files{i},'POOLED')
+        handles.indData{1,i-1}=ind;
     end
     data_tmp = data_tmp(:,ind==1);
     % fcs write data marker_names filename
     if exist(fullfile(PATHSTR,'exported_results','selected_cells_in_fcs'))~=7
         mkdir(fullfile(PATHSTR,'exported_results','selected_cells_in_fcs'))
     end
-    writefcs(fullfile(PATHSTR,'exported_results','selected_cells_in_fcs',[handles.all_existing_files{i},'_selected_nodes.fcs']), data_tmp, marker_names_tmp,marker_names_tmp);
+    writefcs(fullfile(PATHSTR,'exported_results','selected_cells_in_fcs',[handles.all_existing_files{i},'_selected_nodes.fcs']), data_tmp, marker_names_tmp(1:size(data_tmp,1)),marker_names_tmp(1:size(data_tmp,1)));
 end
+guidata(hObject, handles);
+uiresume(handles.figure1);
 
 
 

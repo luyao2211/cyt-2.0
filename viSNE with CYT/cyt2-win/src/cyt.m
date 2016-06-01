@@ -1440,7 +1440,10 @@ function plot_cluster_heat_map
 end
 
 function plot_SPADE_result
+    handles = gethand;
+    selectedGates = get(handles.lstGates,'Value');
     gate = retr('gates');
+    gates = gate(selectedGates,2);
     directory = '';
     directorysegment = regexp(gate(1,4),'\\','split');
     for i=1:1:length(directorysegment{1,1})-1
@@ -1450,7 +1453,21 @@ function plot_SPADE_result
         directory = cd;
     end
     input = [directory, 'SPADE_cluster_mst_upsample_result.mat'];
-    out = View_Edit_SPADE_tree_annotation(input);
+    sessionData = retr('sessionData')';
+    out = View_Edit_SPADE_tree_annotation(input,gates,sessionData);
+    for i=1:1:length(selectedGates)
+        % Set Name
+        gate{end+1, 1} = [gate{selectedGates(i), 1},'_selected_nodes'];
+
+        % Set data indices
+        newgate = out{1,i}.*gate{selectedGates(i), 2};
+        newgate(newgate==0) = [];
+        gate{end, 2} = newgate;
+
+        % Set channel names
+        gate{end, 3} = gate{selectedGates(i), 3};
+    end
+    put('gates', gate);
 end
 
 function plot_cluster_MST
