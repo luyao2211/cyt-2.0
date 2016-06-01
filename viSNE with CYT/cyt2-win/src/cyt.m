@@ -5699,7 +5699,6 @@ end
 % ---
 % Density-based subsample default from each file
 % SPADE manner
-
 function cmiDBSubsample_Callback(~)
 
     handles = gethand;
@@ -5710,19 +5709,9 @@ function cmiDBSubsample_Callback(~)
     sessionData = retr('sessionData');
     gates = retr('gates');
     LocalDensity = zeros(1,length(gateContext));
-%     used_markers = 0;
-%     selGates = get(handles.lstGates, 'Value');
+
 
         try
-%             if isSubsampleEach
-%                 txt = sprintf('You have currently selected %g points.\n\rEnter sample size: ', numel(gateContext));
-%             else
-%                 txt = sprintf('You have currently selected %g gates, a total of %g points.\n\rEnter a sample size for each file: ', numel(selected_gates), numel(gateContext));
-%             end
-            
-%             str_sample_size = inputdlg(...
-%                         sprintf(txt, numel(gateContext)),...
-%                         'Sample', 1, {num2str(min(2000, floor(numel(gateContext)*.20)))});
             
             db_params = density_subsample_params([]);
 
@@ -5772,7 +5761,15 @@ function cmiDBSubsample_Callback(~)
             put('regexps', regexps);
 
             set(handles.lstRegexps, 'String', regexps(:, 1));
-        
+            %addchannel
+            addChannels({'Local Density'}, LocalDensity', gateContext');
+            % reload environment varaibles
+            channel_names = retr('channelNames');
+            sessionData = retr('sessionData');
+            gates = retr('gates');
+            
+            
+            
             hwaitbar = waitbar(0, 'downsampling ...')
         end
         waitbar((find(selected_gates == i)*2-1)/(numel(selected_gates)*2), hwaitbar, sprintf('transforming %s', gates{i,1}));
@@ -5876,7 +5873,7 @@ function cmiDBSubsample_Callback(~)
         %is always a vector
         IC = gates{i,2}(IC);
         
-        local_density = local_density(is_keep)/length(is_keep)*RefDataSize;
+%         local_density = local_density(is_keep)/length(is_keep)*RefDataSize;
 %         LocalDensity = [LocalDensity , local_density];
         
         % add local density to a new channel 
@@ -5893,64 +5890,10 @@ function cmiDBSubsample_Callback(~)
     end
     % add local density may drain the memory so ....
 %     addChannels({'Local Density'}, LocalDensity, gateContext);
-  
+    sessionData(:,end) = LocalDensity';
+    put('sessionData',sessionData);
         
-        % pass the params and gateData to do downsampling
-    
-%     if isSubsampleEach
-%         prefix = inputdlg('Enter a prefix for sample names',...
-%                 'Gate name prefix', 1, {'sample_'});
-%             
-%         if isempty(prefix)
-%             return;
-%         end
-%         
-%         gates = retr('gates');
-%         
-%         %call another window to choose channels
-%         
-%         
-%         
-%         
-%         %
-%         channel_names = retr('channelNames');
-%         
-%         
-%         %for every gate
-%             %calculate od and some other things button1
-%             %downsample botton2
-%         for i=selected_gates
-%             gateInds = intersect(gates{i, 2}, gateContext);
-%             rand_sample = randsample(gateInds, min(sample_size, length(gateInds)));
-%             gate_channel_names = gates{i, 3};
-%             if numel(channel_names) > numel(gate_channel_names)
-%                 gate_channel_names = channel_names;
-%             end
-%             createNewGate(rand_sample, gate_channel_names, {sprintf('%s%s', prefix{1}, gates{i, 1})});
-%             gates = retr('gates');
-% %             set(handles.lstGates, 'String', gates(:, 1));
-% %             set(handles.lstIntGates, 'String', gates(:, 1));
-%         end
-%     else 
-%         rand_sample = randsample(gateContext, min(sample_size, length(gateContext)));
-%         createNewGate(rand_sample, retr('channelNames'));
-% 
-%         gates = retr('gates');
-% %         set(handles.lstGates, 'String', gates(:, 1));
-% %         set(handles.lstIntGates, 'String', gates(:, 1));
-% 
-%         % if more than one gate was selected - add a channel 'gate source'
-%         if numel(selected_gates) > 1
-%             sessionData = retr('sessionData');
-%             v = zeros(size(sessionData,1), 1);
-% 
-%             for j=selected_gates
-%                 v(gates{j, 2}) = j;
-%             end
-%             put('sessionData', sessionData);
-%             addChannels({'gate_source'}, v(:), 1:numel(v), size(gates, 1));
-%         end
-%     end
+
     close(hwaitbar);
 end
 
