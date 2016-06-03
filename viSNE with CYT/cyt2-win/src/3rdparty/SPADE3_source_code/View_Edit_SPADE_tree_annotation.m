@@ -23,7 +23,7 @@ function varargout = View_Edit_SPADE_tree_annotation(varargin)
 
 % Edit the above text to modify the response to help View_Edit_SPADE_tree_annotation
 
-% Last Modified by GUIDE v2.5 25-May-2016 20:23:37
+% Last Modified by GUIDE v2.5 02-Jun-2016 14:21:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -2830,8 +2830,60 @@ else
 end
 
 
-% --- Executes on button press in pushbutton21.
-function pushbutton21_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton21 (see GCBO)
+% --- Executes on button press in button_statistic.
+function button_statistic_Callback(hObject, eventdata, handles)
+% hObject    handle to button_statistic (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+if isempty(handles.tree_annotations)
+    return
+end
+
+set(handles.radiobutton_tree_annotation_show_all,'value',1)
+radiobutton_tree_annotation_show_all_Callback(handles.radiobutton_tree_annotation_show_all, [], handles);
+
+data = []; % pooled downsampled data used for clustering
+idx = [];
+for i=1:length(handles.all_fcs_filenames)
+    idx = [idx, handles.all_assign{1,i}];
+    data = [data, i*ones(1,length(handles.all_assign{1,i}))];
+end
+tree_annotations = handles.tree_annotations;
+bubble_contours = handles.tree_bubble_contour; 
+mst_tree = handles.mst_tree;
+node_positions = handles.node_positions;
+node_size = handles.node_size;
+
+h200=figure(200);
+
+all_data = [];
+group_id = [];
+for i=1:length(tree_annotations)
+    ind_tmp = ismember(idx,tree_annotations{i});
+    all_data = [all_data, data(:,ind_tmp)];
+    group_id = [group_id, i*ones(1,sum(ind_tmp))];
+end
+all_data = [all_data,data];
+group_id = [group_id, length(tree_annotations)+ones(1,size(data,2))];
+
+for i=1:length(tree_annotations)+1
+    handle_boxsubplots(i,1)=subplot(3,length(tree_annotations)+1,length(tree_annotations)+1+i);
+    y = all_data(group_id==i);
+    for j=1:length(handles.all_fcs_filenames)
+        z(j) = length(y(y==j));
+    end
+end
+first_subplot_position = [0.1249 0.3981 0.0434 0.2104];%get(handle_boxsubplots(1),'position');
+last_subplot_position = [0.1741 0.3981 0.0434 0.2104];%get(handle_boxsubplots(2),'position');
+handle_boxsubplots_highlight_axes = axes('position',[0,first_subplot_position(2),1,first_subplot_position(4)],'visible','off');
+
+heatmap_handle = 731.0308;%subplot(3,1,3);
+handle_heatmap_highlight_axes = 731.0308;%axes('position',get(heatmap_handle,'position'),'visible','off');
+
+max_group_id = max(group_id);
+
+handles_annotations_listbox  = uicontrol('style', 'listbox', 'units', 'normalized', 'position', [0.5 0.66 0.41 0.3], 'Parent',h200, 'String',get(handles.listbox_annotations,'string'), ...
+                                         'Callback',{@highlight_one_annotation, h200, mst_tree, node_positions, node_size, tree_annotations,max_group_id, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes});
+highlight_one_annotation(handles_annotations_listbox,[],h200, mst_tree, node_positions, node_size, tree_annotations,max_group_id, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes);
+%set(h200,'ResizeFcn',{@highlight_one_annotation_resize, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes});
+
