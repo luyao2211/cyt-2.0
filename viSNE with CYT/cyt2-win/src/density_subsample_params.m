@@ -120,6 +120,7 @@ function W = getParams
 %     W.ifTD = get(handles.ifTD, 'Value');
      W.target_cell_number = 0;
      W.target_density = 3;
+     W.arcsinh_factor = 1;
     if get(handles.ifTD, 'Value')
         W.target_density_mode = 1;% target density
         W.target_density = str2double(get(handles.td, 'String')); 
