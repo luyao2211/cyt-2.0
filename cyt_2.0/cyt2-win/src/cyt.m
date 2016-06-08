@@ -1082,6 +1082,9 @@ function plot_histograms(by_gates)
    sprintf('Plotted %i points', length(gateContext));
 
 end
+function chkLogtest_Callback(~,~,~)
+    plot_significance_test
+end
 function plot_significance_test
     % ---- init variables and clear prepare plotting planel ----
 
@@ -1103,7 +1106,10 @@ function plot_significance_test
 %     displayChannels = selectedChannels;
 %     nSelGates     = numel(selectedGates);
     set(handles.lstHistGroupA, 'Value', selectedGates);
+%     set(handles.chkLogtest,'Visible',1)
     
+%     flag = get(handles.chkLogtest,'Value')
+    flag = 0
     % clear the figure panel
     cla;
     colormap jet;
@@ -1112,6 +1118,12 @@ function plot_significance_test
     
     x = sessionData(gates{selectedGates(1),2},selectedChannels);
     y = sessionData(gates{selectedGates(2),2},selectedChannels);
+    
+    x(x < quantile(x, 0.05)) = quantile(x,0.05);
+    y(y < quantile(y, 0.05)) = quantile(y,0.05);
+    x(x > quantile(x, 0.95)) = quantile(x,0.95);
+    y(y > quantile(y, 0.95)) = quantile(y,0.95);
+    
     [~,p] = ttest2(x,y);
     
     if length(x) > length(y)
@@ -1126,8 +1138,16 @@ function plot_significance_test
     end
     if (isempty(gateContext)) return; end
     
+
     subplot(1,1,1,'Parent',handles.pnlPlotFigure);
-    boxplot([x,y])
+    
+    if flag
+        description = 'log expression (a.u.)';
+        boxplot(log([x,y]))
+    else
+        description = 'expression (a.u.)';
+        boxplot(([x,y]))
+    end
 %     line()
     if (nSelChannels <= 0) 
         return;
@@ -1143,8 +1163,8 @@ function plot_significance_test
     % show channel information 
 
     xlabel('Gates');
-   
-    title([channelNames(selectedChannels), 't-test ', num2str(p) ] );
+    ylabel([channelNames(selectedChannels) description]);
+    title([ 't-test significance: ' num2str(p) ] );
     %save?
     
 %     fprintf('Done SARA \n')
@@ -1557,6 +1577,7 @@ function plot_cluster_MST
     for each = B'
         cluster_channel_obj(cluster_channel_obj == each) = I(B == each);
     end
+    session_data(gate_context, cluster_channel) = cluster_channel_obj;
     %finding cluster centroids and mapping between clusters
     [centroids, cluster_mapping,cluster_sizes,cellsInCluster] = compute_cluster_centroids(...
                                     session_data(gate_context, selected_channels), inds, ...
@@ -1638,7 +1659,7 @@ function plot_cluster_MST
     node_positions = node_positions - repmat((max(node_positions,[],2)+min(node_positions,[],2))/2,1,size(node_positions,2));
     node_positions = node_positions/max(abs(node_positions(:)))*50;
     % rotate so that the highest density point is in the west
-    node_local_density = accumarray(session_data(gate_context, cluster_channel), local_density')';
+    node_local_density = accumarray(cluster_channel_obj, local_density')';
     % weight_center = sum(node_positions.*repmat(node_local_density,2,1),2)/sum(node_local_density);
     weight_center = find_highest_density_position(node_positions, node_local_density);
     tmp_score = zeros(1,360) + Inf;
@@ -1662,7 +1683,7 @@ function plot_cluster_MST
 
     % determine initial node_size
     node_size = zeros(1,size(node_positions,2));
-    idx = session_data(gate_context, cluster_channel)';
+    idx = cluster_channel_obj';
     for i=1:length(node_size), node_size(i) = sum(local_density(idx==i)); end
     node_size = flow_arcsinh(node_size, median(node_size)/2);
     node_size = ceil(node_size/max(node_size)*10);
@@ -2059,21 +2080,21 @@ end
 
 function plot_heap_chart
     handles = gethand; 
-    hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
+    
     % show controls
-    if ~isCtrlPressed
-        set(handles.pnlClusterControls, 'Visible', 'on');
-        
-        %hide cicilia's panels
-        set(handles.lstClusterChannels, 'Visible', 'off');
-        set(handles.popSamplePlotOptions, 'Visible', 'off');
-        set(handles.txtClusterChannelHM, 'Visible', 'off');
-        set(handles.txtPlotTypeHM, 'Visible', 'off');
-        set(handles.lstSingleCluster, 'Visible', 'off');
-        set(handles.txtChooseClusterHM, 'Visible', 'off');
-        set(handles.popSingleClusterPlotType, 'Visible', 'off');
-        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
-    end
+%     if ~isCtrlPressed
+%         set(handles.pnlClusterControls, 'Visible', 'on');
+%         
+%         %hide cicilia's panels
+%         set(handles.lstClusterChannels, 'Visible', 'off');
+%         set(handles.popSamplePlotOptions, 'Visible', 'off');
+%         set(handles.txtClusterChannelHM, 'Visible', 'off');
+%         set(handles.txtPlotTypeHM, 'Visible', 'off');
+%         set(handles.lstSingleCluster, 'Visible', 'off');
+%         set(handles.txtChooseClusterHM, 'Visible', 'off');
+%         set(handles.popSingleClusterPlotType, 'Visible', 'off');
+%         set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
+%     end
 
 
 
@@ -2109,23 +2130,28 @@ function plot_heap_chart
     
     statis = reshape(statis,length(statis)/length(clusters),length(clusters));
     
-    
+    hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     % clear the figure panel
-%     cla;
-%     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
-%     legend('off');
-%     colorbar('delete');
-%     axis auto;
-%     hold off;
-%     box on;
+    cla;
+    colormap jet
+    legend('off');
+    colorbar('delete');
+    axis auto;
+    hold off;
+    box on;
     
-    bar(statis','stacked','Parent', hPlot)
+
+    barh(statis','stacked')
 %     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
     legend(gate_names);
     
     set(gca, 'ytick', 1:length(clusters));
     y_labs = num2str(clusters);
     set(gca, 'Yticklabel', y_labs);
+    
+    xlabel('cell number in gates')
+    ylabel('cluster number')
+%     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
 end
 %Changing the original msg of the btnPickCluster when choosing a cluster
 function output_txt = myupdatefcn(obj,event_obj,centroids,tSNEmap,percent,cellsInCluster,cluster2gate,clusters,metaClusters)
