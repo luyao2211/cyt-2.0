@@ -143,7 +143,7 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
 	case4PlusPlotTypes = {...	% plot options for 4 or more selected channels
           'Histograms by Gates',	@(by_gate)plot_histograms(1);
           'Histograms',             @(by_gate)plot_histograms(0);
-          'Plot heat map (by gate)',          @plot_gates_heatmap;
+          'Plot heat map (by gate)',         @plot_gates_heatmap;
           'Plot along time',        @plot_along_time};
 
 %           'Plot cluster tsne',      @plot_cluster_tsne;
@@ -155,7 +155,8 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
           'Build MST',               @plot_cluster_MST;
           'SARA',                    @plot_SARA_heat_map;
           'SPADE results',           @plot_SPADE_result;
-          'Plot Cluster bh-SNE',     @plot_cluster_tsne};
+          'Plot Cluster bh-SNE',     @plot_cluster_tsne;
+          'Plot Heap Chart',         @plot_heap_chart};
 %          'Plot sample clusters',   @plot_sample_clusters;
 %          'Plot meta clusters',     @plot_meta_clusters};
 
@@ -1469,7 +1470,9 @@ function plot_SPADE_result
     end
     put('gates', gate);
 end
-
+function lstMSTColorBy_Callback(~,~,~)
+    plot_cluster_MST
+end
 function plot_cluster_MST
     handles = gethand; 
     
@@ -1506,6 +1509,10 @@ function plot_cluster_MST
     %chossing plot place in figure
  	hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     
+    
+    %override lstTsneColorBy's function vise its callback 20160607 very
+    %dangerous but brilliant
+    set(handles.lstTsneColorBy,'Callback',@(hObject,eventdata)cyt('lstMSTColorBy_Callback',hObject,eventdata,guidata(hObject)))
     % clear the figure panel
     cla;
     colormap jet;
@@ -1543,11 +1550,17 @@ function plot_cluster_MST
     for i=1:length(selected_gates),
         inds{i} = find(ismember(gate_context, gates{selected_gates(i),2}));
     end
-    
+    %map the cluster assignment to 1 to ... for fear that the SPADE assumes
+    %continous cluster assignment
+    cluster_channel_obj = session_data(gate_context, cluster_channel);
+    [B,I] =  sort(unique(cluster_channel_obj));
+    for each = B'
+        cluster_channel_obj(cluster_channel_obj == each) = I(B == each);
+    end
     %finding cluster centroids and mapping between clusters
     [centroids, cluster_mapping,cluster_sizes,cellsInCluster] = compute_cluster_centroids(...
                                     session_data(gate_context, selected_channels), inds, ...
-                                    session_data(gate_context, cluster_channel)); 
+                                    cluster_channel_obj); 
     
     %create list of cluster numbers in each selected gate in the panel
     gateCluStr=[];
@@ -1559,14 +1572,14 @@ function plot_cluster_MST
     set(handles.lstClusterNum, 'String', gateCluStr);
                                 
     %parameter in case there are meta clusters                            
-    metaClusters=[];
+%     metaClusters=[];
     
     if ~isCtrlPressed
         set(handles.pnlMetaTsneColor, 'Visible', 'on');
     end
     
     %computing the dot size in the plot by the size of the clusters
-    dot_size = 450/max(cluster_mapping(:,5)) * cluster_mapping(:,5)+5;
+%     dot_size = 450/max(cluster_mapping(:,5)) * cluster_mapping(:,5)+5;
 
     try
         % Compute tSNE map over centroids
@@ -1577,14 +1590,30 @@ function plot_cluster_MST
 %         end
         % compute MST
         % default local density is #cells in each cluster
-        tmp = session_data(gate_context, cluster_channel);
-        local_density = zeros(1,length(gate_context))
-        for i =1:1:length(local_density)
-            local_density(1,i) = cellsInCluster(tmp(i));
+%         tmp = session_data(gate_context, cluster_channel);
+%         local_density = zeros(1,length(gate_context));
+%         for i =1:1:length(local_density)
+%             local_density(1,i) = cellsInCluster(tmp(i));
+%         end
+
+%         search for local density channel
+        flag = 0;
+        for i=length(channel_names)
+            if strfind(channel_names{i},'Density'); 
+                flag = 1;
+                i
+                break;
+            end
         end
-        
+        if flag
+            local_density = session_data(gate_context, i);
+        else
+            tic;
+            [local_density] = compute_local_density(session_data(gate_context,selected_channels)', 1.5, 5); 
+            toc;
+        end
         %calculate MST
-        [mst_tree,adj2] = SPADE_mst_from_contact_weights(session_data(gate_context, cluster_channel)',...
+        [mst_tree,adj2] = SPADE_mst_from_contact_weights(cluster_channel_obj',...
                                                           session_data(gate_context, selected_channels)',...
                                                           local_density,...
                                                           ones(length(gate_context),1));
@@ -1603,7 +1632,7 @@ function plot_cluster_MST
     
     %calucuting node positions for visualization
     node_positions = radio_layout(mst_tree,centroids');
-
+%     node_positions = arch_layout(mst_tree);
 
     % normalize node positions
     node_positions = node_positions - repmat((max(node_positions,[],2)+min(node_positions,[],2))/2,1,size(node_positions,2));
@@ -1720,6 +1749,7 @@ function plot_cluster_MST
                 
         if isDiscrete(color_chan) %color by cluster (or meta)
             h = errordlg('MST dose not support discrete channel')
+            return;
 %             data_col=session_data(gate_context, color_chan);
 %             tsne_col=zeros(length(centroids),1);
 %             
@@ -1857,7 +1887,7 @@ function plot_cluster_tsne
    
     %chossing plot place in figure
  	hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
-    
+    set(handles.lstTsneColorBy,'Callback',@(hObject,eventdata)cyt('lstTsneColorBy_Callback',hObject,eventdata,guidata(hObject)))
     % clear the figure panel
     cla;
     colormap jet;
@@ -2027,6 +2057,76 @@ function plot_cluster_tsne
     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
 
+function plot_heap_chart
+    handles = gethand; 
+    hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
+    % show controls
+    if ~isCtrlPressed
+        set(handles.pnlClusterControls, 'Visible', 'on');
+        
+        %hide cicilia's panels
+        set(handles.lstClusterChannels, 'Visible', 'off');
+        set(handles.popSamplePlotOptions, 'Visible', 'off');
+        set(handles.txtClusterChannelHM, 'Visible', 'off');
+        set(handles.txtPlotTypeHM, 'Visible', 'off');
+        set(handles.lstSingleCluster, 'Visible', 'off');
+        set(handles.txtChooseClusterHM, 'Visible', 'off');
+        set(handles.popSingleClusterPlotType, 'Visible', 'off');
+        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
+    end
+
+
+
+    session_data = retr('sessionData'); % all data
+    gates        = retr('gates');
+    gate_context = retr('gateContext'); % indices currently selected
+    if isempty(gate_context)
+        return;
+    end
+    
+    selected_channels = get(handles.lstChannels, 'Value');
+    channel_names     = retr('channelNames');
+    selected_gates    = get(handles.lstGates, 'Value');
+    gate_names        = gates(selected_gates, 1);
+        
+    
+    %find cluster channel
+    cluster_channel = get(handles.lstCluChannels, 'Value');
+    channel_index = retr('current_cluster_channels');
+    cluster_channel = channel_index(cluster_channel);
+    
+    clusters = unique(session_data(gate_context,cluster_channel));
+%     gate_names = gate_names(selected_gates);
+    
+    statis = [];
+    
+    for gg = selected_gates
+        for cl = clusters'
+            temp_context = session_data(gates{gg,2},cluster_channel);
+            statis(end+1,1) = sum(temp_context == cl);
+        end
+    end
+    
+    statis = reshape(statis,length(statis)/length(clusters),length(clusters));
+    
+    
+    % clear the figure panel
+%     cla;
+%     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
+%     legend('off');
+%     colorbar('delete');
+%     axis auto;
+%     hold off;
+%     box on;
+    
+    bar(statis','stacked','Parent', hPlot)
+%     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
+    legend(gate_names);
+    
+    set(gca, 'ytick', 1:length(clusters));
+    y_labs = num2str(clusters);
+    set(gca, 'Yticklabel', y_labs);
+end
 %Changing the original msg of the btnPickCluster when choosing a cluster
 function output_txt = myupdatefcn(obj,event_obj,centroids,tSNEmap,percent,cellsInCluster,cluster2gate,clusters,metaClusters)
     % Display information about the choosen cluster
@@ -5890,7 +5990,7 @@ function cmiDBSubsample_Callback(~)
     end
     % add local density may drain the memory so ....
 %     addChannels({'Local Density'}, LocalDensity, gateContext);
-    sessionData(:,end) = LocalDensity';
+    sessionData(gateContext,end) = LocalDensity(find(LocalDensity))';
     put('sessionData',sessionData);
         
 
