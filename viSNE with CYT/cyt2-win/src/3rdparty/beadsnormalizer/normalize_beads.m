@@ -282,6 +282,7 @@ end
         %20160530 all prefix for normalized files
         prefix = inputdlg(sprintf('Enter a prefix for normalized files: ')); 
         if (isempty(prefix{:}))
+             newfns = {};
              return;
         end
         
@@ -325,7 +326,7 @@ end
             
 %             fca_writefcs([bead_dir f{i}(1:end-4) '_beads.fcs'],bead_data{i}(:,[1 end 2:end-1]),['Time' 'EventNum' file.channelnames(file.bead_channels)],['Time' 'EventNum' file.channelnames(file.bead_channels)],file.header);
 %             fca_writefcs([norm_dir f{i}(1:end-4) '_normalized.fcs'],file.data,file.markernames,file.channelnames,file.header);
-            temp_name = [norm_dir prefix{:} f{i} '_' date];
+            temp_name = [norm_dir prefix{:} '_' date '_' f{i} ];
             fca_writefcs(temp_name,file.data,file.markernames,file.channelnames,file.header);
             newfns{1,i} = temp_name;
             clear file
