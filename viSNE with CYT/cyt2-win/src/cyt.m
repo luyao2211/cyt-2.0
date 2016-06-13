@@ -143,7 +143,7 @@ function cyt_OpeningFcn(hObject, ~, handles, varargin)
 	case4PlusPlotTypes = {...	% plot options for 4 or more selected channels
           'Histograms by Gates',	@(by_gate)plot_histograms(1);
           'Histograms',             @(by_gate)plot_histograms(0);
-          'Plot heat map (by gate)',         @plot_gates_heatmap;
+          'Plot heat map (by gates)',         @plot_gates_heatmap;
           'Plot along time',        @plot_along_time};
 
 %           'Plot cluster tsne',      @plot_cluster_tsne;
@@ -1105,7 +1105,7 @@ function plot_significance_test
     end
 %     displayChannels = selectedChannels;
 %     nSelGates     = numel(selectedGates);
-    set(handles.lstHistGroupA, 'Value', selectedGates);
+%     set(handles.lstHistGroupA, 'Value', selectedGates);
 %     set(handles.chkLogtest,'Visible',1)
     
 %     flag = get(handles.chkLogtest,'Value')
@@ -1294,7 +1294,9 @@ function plot_cluster_heat_map
         set(handles.popSingleClusterPlotType, 'Visible', 'off');
         set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
     end
-
+    %in case the callback is not recovered
+    set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback',hObject,eventdata,guidata(hObject)))
+    set(handles.chkDegVar,'Visible','on')
 	hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     % clear the figure panel
     cla;
@@ -2128,7 +2130,7 @@ function plot_heap_chart
         end
     end
     
-    statis = reshape(statis,length(statis)/length(clusters),length(clusters));
+    statis = reshape(statis,length(clusters),length(statis)/length(clusters));
     
     hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     % clear the figure panel
@@ -2141,7 +2143,7 @@ function plot_heap_chart
     box on;
     
 
-    barh(statis','stacked')
+    barh(statis,'stacked')
 %     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
     legend(gate_names);
     
@@ -3123,65 +3125,174 @@ function createSARA
     fprintf('Done SARA \n')
 end
 
-
+function chkScale_Callback_bygate(~,~,~)
+    plot_gates_heatmap
+end
 function plot_gates_heatmap
     
-%get all the context needed
-    handles = gethand;
-    session_data = retr('sessionData'); % all data
-    gates        = retr('gates');
-    gate_context = retr('gateContext'); % indices currently selected
-    
-    if isempty(gate_context)
-    return;
-    end
-    
-    selected_channels = get(handles.lstChannels, 'Value');
-    channel_names     = retr('channelNames');
-    selected_gates    = get(handles.lstGates, 'Value');
-    gate_names        = gates(selected_gates, 1);
-
-    %call process.m to select one gate as basal and the rest as sti
-    
-%     [~,selectedgates, ~, ~, ~, ~, ~] = ...
-%     Preprocess('selectgates', gate_names);
+% %get all the context needed
+%     handles = gethand;
 %     
-%     if isempty(selectedgates) || length(selectedgates) > 1
-%         h = warndlg('only one gates should be selected!');
-%         return;
+%     if ~isCtrlPressed
+%         set(handles.pnlClusterControls, 'Visible', 'on');
+% 
+%         %hide cicilia's panels
+%         set(handles.lstClusterChannels, 'Visible', 'off');
+%         set(handles.popSamplePlotOptions, 'Visible', 'off');
+%         set(handles.txtClusterChannelHM, 'Visible', 'off');
+%         set(handles.txtPlotTypeHM, 'Visible', 'off');
+%         set(handles.lstSingleCluster, 'Visible', 'off');
+%         set(handles.txtChooseClusterHM, 'Visible', 'off');
+%         set(handles.popSingleClusterPlotType, 'Visible', 'off');
+%         set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
 %     end
 %     
-%     basal = selected_gates(1,selectedgates);
-%     selected_gates = setdiff(selected_gates,basal);
-    %put the data into format so as to be passed into SARA
-    scores = [];
-    for ch = selected_channels
-        for gts = selected_gates
-            scores(end+1,1) =  median( session_data(gates{gts,2},(ch)) );
-        end
+%     session_data = retr('sessionData'); % all data
+%     gates        = retr('gates');
+%     gate_context = retr('gateContext'); % indices currently selected
+%     
+%     if isempty(gate_context)
+%     return;
+%     end
+%     
+%     selected_channels = get(handles.lstChannels, 'Value');
+%     channel_names     = retr('channelNames');
+%     selected_gates    = get(handles.lstGates, 'Value');
+%     gate_names        = gates(selected_gates, 1);
+% 
+%     %call process.m to select one gate as basal and the rest as sti
+%     
+% %     [~,selectedgates, ~, ~, ~, ~, ~] = ...
+% %     Preprocess('selectgates', gate_names);
+% %     
+% %     if isempty(selectedgates) || length(selectedgates) > 1
+% %         h = warndlg('only one gates should be selected!');
+% %         return;
+% %     end
+% %     
+% %     basal = selected_gates(1,selectedgates);
+% %     selected_gates = setdiff(selected_gates,basal);
+%     %put the data into format so as to be passed into SARA
+%     scores = [];
+%     for ch = selected_channels
+%         for gts = selected_gates
+%             scores(end+1,1) =  median( session_data(gates{gts,2},(ch)) );
+%         end
+%     end
+%     
+% %     scores = zscore(scores,1);
+%     scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
+%     scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
+%     
+%     
+% %     scores = 2.5 * sign(scores).* (abs(scores)>2.5) + scores .* (~(abs(scores))>2.5);
+%     %     To facilitate comparability across samples and signaling phenotypes, 
+%     %     SARA scores were converted into z-scores. 
+%     %     The dynamic range of SARA scores varied substantially between conditions. 
+%     %     For example, the chemical perturbation pervanadate produced much more dramatic responses 
+%     %     than biological stimulations such as IL-3. Additionally, 
+%     %     we noted subtle sample-specific biases in these dynamic ranges, 
+%     %     likely due to inevitable differences in handling of primary human samples from day to day. 
+%     %     Therefore, within each condition and sample, we pooled SARA values from all subpopulations 
+%     %     and all phospho-markers and standardized the SARA scores by re-expressing them as z-scores.
+%     scores = reshape(scores,length(selected_gates),length(selected_channels));
+%     scores = zscore(scores,1);
+%     %call SARA to get scores considering cellfun or arrayfun
+%     
+% 
+%     %plot heat map in RdBu manner
+%     hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
+%     % clear the figure panel
+%     cla;
+%     colormap jet;
+%     legend('off');
+%     colorbar('delete');
+%     axis auto;
+%     hold off;
+%     box on;
+%     
+%     
+% %     color_map = interpolate_colormap(flip(othercolor('Spectral10')), 64);
+% %find color scheme
+%     color = get(handles.popSampleHeatColor, 'Value');
+% 
+%     if color == 6,
+%         color_map = interpolate_colormap(othercolor('YlOrBr9'), 64);
+%     elseif color == 7,
+%          color_map = interpolate_colormap(othercolor('Blues5'), 64);
+%         %color_map = colormap(bone(64));
+%     elseif color == 8,
+%         color_map = interpolate_colormap(othercolor('Greens9'), 64);
+%         %color_map = colormap(pink(64));
+%     elseif color == 9,
+%         color_map = colormap(gray(64));
+%     elseif color == 10,
+%         color_map = interpolate_colormap(flip(othercolor('BuPu7')), 64);
+%     elseif color == 1,
+%         color_map = interpolate_colormap(flip(othercolor('Spectral10')), 11);
+%     elseif color == 2,
+%         color_map = interpolate_colormap(flip(othercolor('RdBu10')), 11);
+%     elseif color == 3,
+%         color_map = interpolate_colormap(flip(othercolor('RdGy10')), 11);
+%     elseif color == 4,
+%         color_map = interpolate_colormap(flip(othercolor('RdYlBu10')), 11);
+%     elseif color == 5,
+%         color_map = interpolate_colormap(flip(othercolor('RdYlGn10')), 11);
+%     end
+%     % === plot heat map ===
+%     imagesc(scores);
+%     
+% %     show cluster information
+%     set(gca, 'ytick', 1:length(selected_gates));
+% %     if (show_by_cluster_channel)
+% %         y_labs = strcat(...
+% %             strread(num2str(clusters_in_sample'), '%s'),...
+% %             ' (',...
+% %             num2str(cells_pr_cluster*100,'%2.2f'),...
+% %             '%)');
+% %     else
+%         y_labs = strcat(...
+%             gates(selected_gates, 1)...
+%             );            
+% %     end
+%     set(gca, 'Yticklabel', y_labs);
+% %        yticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
+%     colormap(color_map);    
+%     colorbar;
+%     
+%     % show channel information 
+%     set(gca, 'xtick', []);
+%     xticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
+%     
+%     xlabel('Channels');
+%     ylabel('Gates')
+% %     title(['SARA z-scores - Basal: ' gates{basal,1}] );
+%     %save?
+%     
+% %     fprintf('Done SARA \n')
+    handles = gethand; 
+        
+    % show controls
+    if ~isCtrlPressed
+        set(handles.pnlClusterControls, 'Visible', 'on');
+        
+        %hide cicilia's panels
+        set(handles.lstClusterChannels, 'Visible', 'off');
+        set(handles.popSamplePlotOptions, 'Visible', 'off');
+        set(handles.txtClusterChannelHM, 'Visible', 'off');
+        set(handles.txtPlotTypeHM, 'Visible', 'off');
+        set(handles.lstSingleCluster, 'Visible', 'off');
+        set(handles.txtChooseClusterHM, 'Visible', 'off');
+        set(handles.popSingleClusterPlotType, 'Visible', 'off');
+        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
     end
     
-%     scores = zscore(scores,1);
-    scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
-    scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
+    %change the callback function of checkboxes
     
-    
-%     scores = 2.5 * sign(scores).* (abs(scores)>2.5) + scores .* (~(abs(scores))>2.5);
-    %     To facilitate comparability across samples and signaling phenotypes, 
-    %     SARA scores were converted into z-scores. 
-    %     The dynamic range of SARA scores varied substantially between conditions. 
-    %     For example, the chemical perturbation pervanadate produced much more dramatic responses 
-    %     than biological stimulations such as IL-3. Additionally, 
-    %     we noted subtle sample-specific biases in these dynamic ranges, 
-    %     likely due to inevitable differences in handling of primary human samples from day to day. 
-    %     Therefore, within each condition and sample, we pooled SARA values from all subpopulations 
-    %     and all phospho-markers and standardized the SARA scores by re-expressing them as z-scores.
-    scores = reshape(scores,length(selected_gates),length(selected_channels));
-    scores = zscore(scores,1);
-    %call SARA to get scores considering cellfun or arrayfun
-    
-
-    %plot heat map in RdBu manner
+    %chkScale chkDegVar
+    set(handles.chkDegVar,'Visible','off')
+    set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback_bygate',hObject,eventdata,guidata(hObject)))
+	
     hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     % clear the figure panel
     cla;
@@ -3191,28 +3302,140 @@ function plot_gates_heatmap
     axis auto;
     hold off;
     box on;
+
+    session_data = retr('sessionData'); % all data
+    gates        = retr('gates');
+    gate_context = retr('gateContext'); % indices currently selected
+    if isempty(gate_context)
+        return;
+    end
+    
+    selected_channels = get(handles.lstChannels, 'Value');
+    channel_names     = retr('channelNames');
+    selected_gates    = get(handles.lstGates, 'Value');
+    gate_names        = gates(selected_gates, 1);
+        
+    
+    %find cluster channel
+    cluster_channel = get(handles.lstCluChannels, 'Value');
+    channel_index = retr('current_cluster_channels');
+    cluster_channel = channel_index(cluster_channel);
+       
+    %User choise for degree of var in the gui
+    DegVarFlag = get(handles.chkDegVar, 'Value');
+    rescale= get(handles.chkScale, 'Value');
+    
+    %find color scheme
+    color = get(handles.popSampleHeatColor, 'Value');
+
+    if color == 6,
+        color_map = interpolate_colormap(othercolor('YlOrBr9'), 64);
+    elseif color == 7,
+         color_map = interpolate_colormap(othercolor('Blues5'), 64);
+        %color_map = colormap(bone(64));
+    elseif color == 8,
+        color_map = interpolate_colormap(othercolor('Greens9'), 64);
+        %color_map = colormap(pink(64));
+    elseif color == 9,
+        color_map = colormap(gray(64));
+    elseif color == 10,
+        color_map = interpolate_colormap(othercolor('BuPu7'), 64);
+    elseif color == 1,
+        color_map = interpolate_colormap(flip(othercolor('Spectral10')), 11);
+    elseif color == 2,
+        color_map = interpolate_colormap(flip(othercolor('RdBu10')), 11);
+    elseif color == 3,
+        color_map = interpolate_colormap(flip(othercolor('RdGy10')), 11);
+    elseif color == 4,
+        color_map = interpolate_colormap(flip(othercolor('RdYlBu10')), 11);
+    elseif color == 5,
+        color_map = interpolate_colormap(flip(othercolor('RdYlGn10')), 11);
+%         Spectral9 in PhenoGraph was used to profile surface marker heat
+%         map;RdBu10 in Phenograph was used to profile intracellular
+%         signaling these colormaps are recommended to be used in a flipped manner
+    end
+            
+    % set color map
+    colormap(color_map);
+    
+    % show the heat map with clusters
+    show_by_cluster_channel = false;
+    
+    % show the heat map gates
+    %show_by_cluster_channel = false;
+
+    if (show_by_cluster_channel && ~DegVarFlag)
+        
+        clusters_in_sample = unique(session_data(gate_context, cluster_channel));
+
+        %Ignoring cluster No. 0 
+        clusters_in_sample = clusters_in_sample(clusters_in_sample~=0);
+        
+        num_clusters = length(clusters_in_sample);
+
+        %finding mean values of marker levels for each cluster
+        marker_means = zeros(num_clusters, length(selected_channels));
+        data = session_data(gate_context, selected_channels);
+
+        %looping through clusters
+        for i=1:length(clusters_in_sample)
+            marker_means(i,:) = mean(data(session_data(gate_context, cluster_channel)==clusters_in_sample(i),:),1);
+        end
+        
+        if rescale
+            marker_means = mynormalize(marker_means, 100);
+        end
+
+        %find percentage of cells belonging to each cluster
+        cells_pr_cluster = countmember(clusters_in_sample,session_data(gate_context,cluster_channel))/length(gate_context);
+    
+    %Using sorted heat map with degree of var
+    elseif (show_by_cluster_channel && DegVarFlag)
+        sortedclusterheatmap(session_data(gate_context,selected_channels ),...
+                             session_data(gate_context, cluster_channel),...
+                             channel_names(selected_channels),rescale);
+        return;
+    %Using heat map for gates
+    else
+        num_clusters = length(selected_gates);
+
+        %finding mean values of marker levels for each cluster
+        marker_means = zeros(num_clusters, length(selected_channels));
+        data = session_data(gate_context, selected_channels);
+
+        %looping through gates
+        for i=1:numel(selected_gates)
+            marker_means(i,:) = mean(session_data(gates{selected_gates(i),2},selected_channels),1);
+        end
+        
+        if rescale
+            marker_means = mynormalize(marker_means, 100);
+        end
+        
+        %find percentage of cells belonging to each cluster
+        cells_pr_cluster = cellfun(@(v)length(v), gates(selected_gates, 2))/length(gate_context);
+    end
     
     
-    color_map = interpolate_colormap(flip(othercolor('Spectral10')), 64);
     % === plot heat map ===
-    imagesc(scores);
-    
-%     show cluster information
-    set(gca, 'ytick', 1:length(selected_gates));
-%     if (show_by_cluster_channel)
-%         y_labs = strcat(...
-%             strread(num2str(clusters_in_sample'), '%s'),...
-%             ' (',...
-%             num2str(cells_pr_cluster*100,'%2.2f'),...
-%             '%)');
-%     else
+    imagesc(marker_means);
+
+    % show cluster information
+    set(gca, 'ytick', 1:num_clusters);
+    if (show_by_cluster_channel)
         y_labs = strcat(...
-            gates(selected_gates, 1)...
-            );            
-%     end
+            strread(num2str(clusters_in_sample'), '%s'),...
+            ' (',...
+            num2str(cells_pr_cluster*100,'%2.2f'),...
+            '%)');
+    else
+        y_labs = strcat(...
+            gates(selected_gates, 1),...
+            ' (',...
+            num2str(cells_pr_cluster*100,'%2.2f'),...
+            '%)');            
+    end
     set(gca, 'Yticklabel', y_labs);
-%        yticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
-    colormap(color_map);    
     colorbar;
     
     % show channel information 
@@ -3220,11 +3443,7 @@ function plot_gates_heatmap
     xticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
     
     xlabel('Channels');
-    ylabel('Gates')
-%     title(['SARA z-scores - Basal: ' gates{basal,1}] );
-    %save?
-    
-%     fprintf('Done SARA \n')
+    ylabel('Clusters');
 end
 
 function plot_meta_clusters(cluster_channel)
@@ -5188,6 +5407,9 @@ function cmiBeads_Callback(~, ~, ~)
     %begin normalization
     t = gates(:,4);
     files = normalize_beads(0,t');
+    if isempty(files)
+        return
+    end
 %     files = {};
 %     for i = 1:length(t)
 %         tt = t{i};
