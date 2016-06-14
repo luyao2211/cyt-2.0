@@ -145,7 +145,9 @@ function varargout = View_Edit_SPADE_tree_annotation_OutputFcn(hObject, eventdat
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
-varargout{1} = handles.indData;
+varargout{1}{1} = handles.indData;
+varargout{1}{2} = handles.prefix;
+delete(handles.figure1);
 
 
 
@@ -1814,6 +1816,8 @@ for i=1:length(handles.all_existing_files)
     end
     writefcs(fullfile(PATHSTR,'exported_results','selected_cells_in_fcs',[handles.all_existing_files{i},'_selected_nodes.fcs']), data_tmp, marker_names_tmp(1:size(data_tmp,1)),marker_names_tmp(1:size(data_tmp,1)));
 end
+Prefix = inputdlg('Enter the Prefix: ','Prefix', 1);
+handles.prefix = [Prefix, '_'];
 guidata(hObject, handles);
 uiresume(handles.figure1);
 
@@ -2882,7 +2886,9 @@ for i=1:length(tree_annotations)+1
     end
 end
 bar(anInfo);
+set(gca,'XTick',1:1:length(tree_annotations)+1);
 set(gca,'xticklabel',label);
+rotateticklabel(gca,'x',-30);
 legend(handles.all_fcs_filenames);
 subplot_position = get(handle_boxsubplots,'position');
 handle_boxsubplots_highlight_axes = axes('position',[0,subplot_position(2),1,subplot_position(4)],'visible','off');
@@ -2898,7 +2904,9 @@ for i=1:length(handles.all_fcs_filenames)
     end
 end
 bar(FcsInfo)
+set(gca,'XTick',1:1:length(handles.all_fcs_filenames));
 set(gca,'xticklabel',handles.all_fcs_filenames);
+rotateticklabel(gca,'x',-30);
 legend(label);
 handle_heatmap_highlight_axes = axes('position',get(heatmap_handle,'position'),'visible','off');
 
@@ -2908,4 +2916,83 @@ handles_annotations_listbox  = uicontrol('style', 'listbox', 'units', 'normalize
                                          'Callback',{@highlight_one_annotation, h200, mst_tree, node_positions, node_size, tree_annotations,max_group_id, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes});
 highlight_one_annotation(handles_annotations_listbox,[],h200, mst_tree, node_positions, node_size, tree_annotations,max_group_id, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes);
 set(h200,'ResizeFcn',{@highlight_one_annotation_resize, heatmap_handle,handle_boxsubplots, handle_boxsubplots_highlight_axes, handle_heatmap_highlight_axes});
+
+function TextHandle = rotateticklabel(ha,tag,rot)
+%   旋转坐标轴刻度标签的函数
+%   ha   坐标系句柄（默认为当前坐标系）
+%   tag  坐标轴标识字符串('X'或'Y')，默认旋转X轴标签
+%   rot  旋转角度（单位：度）
+%
+%   Example:
+%   x = 0:0.05:2*pi;
+%   y = sin(x);
+%   plot(x,y);
+%   rotateticklabel(gca,'x',-30);
+%
+%   CopyRight：xiezhh（谢中华）,2011.10
+if ~ishandle(ha)
+    warning('第一个输入参数应为坐标系句柄');
+    return;
+end
+if ~strcmpi(get(ha,'type'),'axes')
+    warning('第一个输入参数应为坐标系句柄');
+    return;
+end
+if nargin == 1
+    tag = 'X';
+    rot = 0;
+elseif nargin == 2
+    if isnumeric(tag) && isscalar(tag)
+        rot = tag;
+        tag = 'X';
+    elseif ischar(tag) && (strncmpi(tag,'x',1) || strncmpi(tag,'y',1))
+        rot = 0;
+    else
+        warning('输入参数类型错误');
+        return;
+    end
+else
+    if ~isnumeric(rot) || ~isscalar(rot)
+        warning('输入参数类型错误');
+    end
+    if ~ischar(tag) || (~strncmpi(tag,'x',1) && ~strncmpi(tag,'y',1))
+        warning('输入参数类型错误');
+    end
+end
+axes(ha);
+oldxticklabel = findobj(ha,'type','text','tag','oldxticklabel');
+oldyticklabel = findobj(ha,'type','text','tag','oldyticklabel');
+if strncmpi(tag,'x',1)
+    if isempty(oldxticklabel)
+        str = get(ha,'XTickLabel');
+        x = get(ha,'XTick');
+        yl = ylim(ha);
+        set(ha,'XTickLabel',[]);
+        y = zeros(size(x)) + yl(1) - range(yl)/30;
+        TextHandle = text(x,y,str,'rotation',rot,...
+            'Interpreter','none','tag','oldxticklabel');
+    else
+        set(oldxticklabel,'rotation',rot);
+        TextHandle = oldxticklabel;
+    end
+else
+    if isempty(oldyticklabel)
+        str = get(ha,'YTickLabel');
+        y = get(ha,'YTick');
+        xl = xlim(ha);
+        set(ha,'YTickLabel',[]);
+        x = zeros(size(y)) + xl(1) - range(xl)/10;
+        TextHandle = text(x,y,str,'rotation',rot,...
+            'Interpreter','none','tag','oldyticklabel');
+    else
+        set(oldyticklabel,'rotation',rot);
+        TextHandle = oldyticklabel;
+    end
+end
+rot = mod(rot,360);
+if rot>=0 && rot<180
+   set(TextHandle,'HorizontalAlignment','right');
+else
+   set(TextHandle,'HorizontalAlignment','left');
+end
 
