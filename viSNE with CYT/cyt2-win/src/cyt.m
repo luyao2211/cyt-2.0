@@ -1085,11 +1085,33 @@ end
 function chkLogtest_Callback(~,~,~)
     plot_significance_test
 end
+
+function chkScale_Callback_test(~,~,~)
+    plot_significance_test
+end
 function plot_significance_test
     % ---- init variables and clear prepare plotting planel ----
 
     handles = gethand;
-
+    if ~isCtrlPressed
+        set(handles.pnlClusterControls, 'Visible', 'on');
+        
+        %hide cicilia's panels
+        set(handles.lstClusterChannels, 'Visible', 'off');
+        set(handles.popSamplePlotOptions, 'Visible', 'off');
+        set(handles.txtClusterChannelHM, 'Visible', 'off');
+        set(handles.txtPlotTypeHM, 'Visible', 'off');
+        set(handles.lstSingleCluster, 'Visible', 'off');
+        set(handles.txtChooseClusterHM, 'Visible', 'off');
+        set(handles.popSingleClusterPlotType, 'Visible', 'off');
+        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
+    end
+    %in case the callback is not recovered
+    set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback_test',hObject,eventdata,guidata(hObject)))
+    set(handles.chkDegVar,'Visible','off');
+    set(handles.popSampleHeatColor,'Visible','off');
+    set(handles.text62,'Visible','off');
+    
     sessionData	= retr('sessionData');
     gateContext	= retr('gateContext');
 %     intIndices  = getIntIndices;
@@ -1108,8 +1130,8 @@ function plot_significance_test
 %     set(handles.lstHistGroupA, 'Value', selectedGates);
 %     set(handles.chkLogtest,'Visible',1)
     
-%     flag = get(handles.chkLogtest,'Value')
-    flag = 0
+    flag = get(handles.chkScale,'Value')
+%     flag = 0
     % clear the figure panel
     cla;
     colormap jet;
@@ -1125,7 +1147,7 @@ function plot_significance_test
     y(y > quantile(y, 0.95)) = quantile(y,0.95);
     
     [~,p] = ttest2(x,y);
-    
+    p
     if length(x) > length(y)
 
         indices = randperm(length(x));
@@ -1136,14 +1158,16 @@ function plot_significance_test
         indices = indices(1:length(x));
         y = y(indices);
     end
-    if (isempty(gateContext)) return; end
+    if (isempty(gateContext)) 
+        return; 
+    end
     
 
     subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     
     if flag
         description = 'log expression (a.u.)';
-        boxplot(log([x,y]))
+        boxplot(reallog([x,y]+1))
     else
         description = 'expression (a.u.)';
         boxplot(([x,y]))
@@ -1163,7 +1187,7 @@ function plot_significance_test
     % show channel information 
 
     xlabel('Gates');
-    ylabel([channelNames(selectedChannels) description]);
+    ylabel([channelNames(selectedChannels),description]);
     title([ 't-test significance: ' num2str(p) ] );
     %save?
     
@@ -1296,7 +1320,9 @@ function plot_cluster_heat_map
     end
     %in case the callback is not recovered
     set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback',hObject,eventdata,guidata(hObject)))
-    set(handles.chkDegVar,'Visible','on')
+    set(handles.chkDegVar,'Visible','on');
+    set(handles.popSampleHeatColor,'Visible','on');
+    set(handles.text62,'Visible','on');
 	hPlot = subplot(1,1,1,'Parent',handles.pnlPlotFigure);
     % clear the figure panel
     cla;
@@ -1871,7 +1897,7 @@ function plot_cluster_MST
     
     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
     
-    dcm_obj = datacursormode(gcf);
+%     dcm_obj = datacursormode(gcf);
 %     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
 
@@ -2080,24 +2106,34 @@ function plot_cluster_tsne
     set(dcm_obj,'UpdateFcn',{@myupdatefcn,centroids,tSNE_out,cluster_sizes,cellsInCluster,cluster_mapping(:,3),cluster_mapping(:,1),metaClusters});   
 end
 
+function chkScale_Callback_heap(~,~,~)
+    plot_heap_chart;
+end
 function plot_heap_chart
     handles = gethand; 
     
     % show controls
-%     if ~isCtrlPressed
-%         set(handles.pnlClusterControls, 'Visible', 'on');
-%         
-%         %hide cicilia's panels
-%         set(handles.lstClusterChannels, 'Visible', 'off');
-%         set(handles.popSamplePlotOptions, 'Visible', 'off');
-%         set(handles.txtClusterChannelHM, 'Visible', 'off');
-%         set(handles.txtPlotTypeHM, 'Visible', 'off');
-%         set(handles.lstSingleCluster, 'Visible', 'off');
-%         set(handles.txtChooseClusterHM, 'Visible', 'off');
-%         set(handles.popSingleClusterPlotType, 'Visible', 'off');
-%         set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
-%     end
-
+    % show controls
+    if ~isCtrlPressed
+        set(handles.pnlClusterControls, 'Visible', 'on');
+        
+        %hide cicilia's panels
+        set(handles.lstClusterChannels, 'Visible', 'off');
+        set(handles.popSamplePlotOptions, 'Visible', 'off');
+        set(handles.txtClusterChannelHM, 'Visible', 'off');
+        set(handles.txtPlotTypeHM, 'Visible', 'off');
+        set(handles.lstSingleCluster, 'Visible', 'off');
+        set(handles.txtChooseClusterHM, 'Visible', 'off');
+        set(handles.popSingleClusterPlotType, 'Visible', 'off');
+        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
+    end
+    %in case the callback is not recovered
+    set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback_heap',hObject,eventdata,guidata(hObject)))
+    set(handles.chkDegVar,'Visible','off');
+    set(handles.popSampleHeatColor,'Visible','off');
+    set(handles.text62,'Visible','off');
+%     set(handles.chkDegVar,'String','Exchange Coordinates')
+%     set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback_heap',hObject,eventdata,guidata(hObject)))
 
 
     session_data = retr('sessionData'); % all data
@@ -2129,6 +2165,7 @@ function plot_heap_chart
             statis(end+1,1) = sum(temp_context == cl);
         end
     end
+    flag = get(handles.chkScale,'Value');
     
     statis = reshape(statis,length(clusters),length(statis)/length(clusters));
     
@@ -2142,18 +2179,34 @@ function plot_heap_chart
     hold off;
     box on;
     
+    if ~flag 
+        barh(statis,'stacked')
+    %     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
+        legend(gate_names);
 
-    barh(statis,'stacked')
-%     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
-    legend(gate_names);
-    
-    set(gca, 'ytick', 1:length(clusters));
-    y_labs = num2str(clusters);
-    set(gca, 'Yticklabel', y_labs);
-    
-    xlabel('cell number in gates')
-    ylabel('cluster number')
-%     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
+        set(gca, 'ytick', 1:length(clusters));
+        y_labs = num2str(clusters);
+        set(gca, 'Yticklabel', y_labs);
+
+        xlabel('cell number in gates')
+        ylabel('cluster number')
+    %     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));
+    else
+        statis_sum = sum(statis,2);
+        
+        statis = statis./ repmat(statis_sum,1,size(statis,2));
+        barh(statis,'stacked')
+    %     colormap(interpolate_colormap(flip(othercolor('Spectral11')), 64));
+        legend(gate_names);
+
+        set(gca, 'ytick', 1:length(clusters));
+        y_labs = num2str(clusters);
+        set(gca, 'Yticklabel', y_labs);
+
+        xlabel('cell freqencies in gates')
+        ylabel('cluster number')
+    %     delete(subplot(1,1,1,'Parent',handles.hmPlotFigure));        
+    end
 end
 %Changing the original msg of the btnPickCluster when choosing a cluster
 function output_txt = myupdatefcn(obj,event_obj,centroids,tSNEmap,percent,cellsInCluster,cluster2gate,clusters,metaClusters)
@@ -3021,11 +3074,34 @@ function createMeta
     end
     
 end
-
+function chkScale_Callback_SARA(~,~,~)
+    createSARA
+end
 function createSARA
     
 %get all the context needed
     handles = gethand;
+    
+    
+    if ~isCtrlPressed
+        set(handles.pnlClusterControls, 'Visible', 'on');
+        
+        %hide cicilia's panels
+        set(handles.lstClusterChannels, 'Visible', 'off');
+        set(handles.popSamplePlotOptions, 'Visible', 'off');
+        set(handles.txtClusterChannelHM, 'Visible', 'off');
+        set(handles.txtPlotTypeHM, 'Visible', 'off');
+        set(handles.lstSingleCluster, 'Visible', 'off');
+        set(handles.txtChooseClusterHM, 'Visible', 'off');
+        set(handles.popSingleClusterPlotType, 'Visible', 'off');
+        set(handles.txtSingleClusterPlotTypeHM, 'Visible', 'off');
+    end
+    %in case the callback is not recovered
+    set(handles.chkScale,'Callback',@(hObject,eventdata)cyt('chkScale_Callback_SARA',hObject,eventdata,guidata(hObject)))
+    set(handles.chkDegVar,'Visible','off');
+    set(handles.popSampleHeatColor,'Visible','off');
+    set(handles.text62,'Visible','off');
+    
     session_data = retr('sessionData'); % all data
     gates        = retr('gates');
     gate_context = retr('gateContext'); % indices currently selected
@@ -3044,27 +3120,53 @@ function createSARA
     [~,selectedgates, ~, ~, ~, ~, ~] = ...
     Preprocess('selectgates', gate_names);
     
-    if isempty(selectedgates) || length(selectedgates) > 1
-        h = warndlg('only one gates should be selected!');
+%     if isempty(selectedgates) || length(selectedgates) > 1
+%         h = warndlg('only one gates should be selected!');
+%         return;
+%     end
+    
+    if isempty(selectedgates) || length(selectedgates)*2 ~= length(gate_names) || mod(length(gate_names),2) ~=0
+        h = warndlg('only even numbers of gates should be selected! And half of them shall be selected as basal!');
         return;
-    end
+    end 
     
     basal = selected_gates(1,selectedgates);
     stim = setdiff(selected_gates,basal);
     %put the data into format so as to be passed into SARA
-    scores = [];
+%     scores = [];
+%     for ch = selected_channels
+%         for sti = stim
+%             scores(end+1,1) =  SARA( session_data(gates{basal,2},(ch)),...
+%             session_data(gates{(sti),2},(ch)),100);
+%         end
+%     end
+
+    scores = zeros(length(stim)*length(selected_channels),1);
+    i=1;
     for ch = selected_channels
         for sti = stim
-            scores(end+1,1) =  SARA( session_data(gates{basal,2},(ch)),...
+            
+            scores(i,1) =  SARA( session_data(gates{basal(stim == sti),2},(ch)),...
             session_data(gates{(sti),2},(ch)),100);
+        i = i + 1;
         end
     end
     
-    scores = zscore(scores,1);
-    scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
-    scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
+    flag = get(handles.chkScale,'Value');
     
-    
+    if flag
+        
+        scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
+        scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
+        scores = zscore(scores,1);
+        scores = reshape(scores,length(stim),length(selected_channels));
+    else
+        scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
+        scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
+        scores = reshape(scores,length(stim),length(selected_channels));
+        scores = zscore(scores',1)';
+
+    end
 %     scores = 2.5 * sign(scores).* (abs(scores)>2.5) + scores .* (~(abs(scores))>2.5);
     %     To facilitate comparability across samples and signaling phenotypes, 
     %     SARA scores were converted into z-scores. 
@@ -3075,7 +3177,7 @@ function createSARA
     %     likely due to inevitable differences in handling of primary human samples from day to day. 
     %     Therefore, within each condition and sample, we pooled SARA values from all subpopulations 
     %     and all phospho-markers and standardized the SARA scores by re-expressing them as z-scores.
-    scores = reshape(scores,length(stim),length(selected_channels));
+%     scores = reshape(scores,length(stim),length(selected_channels));
 %     scores = zscore(scores',1)';
     %call SARA to get scores considering cellfun or arrayfun
     
@@ -3119,7 +3221,8 @@ function createSARA
     xticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
     
     xlabel('Channels');
-    title(['SARA z-scores - Basal: ' gates{basal,1}] );
+%     title(['SARA z-scores - Basal: ' gates{basal,1}] );
+    title('Perturbation Responses')
     %save?
     
     fprintf('Done SARA \n')
