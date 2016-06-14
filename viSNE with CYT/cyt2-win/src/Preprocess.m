@@ -108,7 +108,8 @@ function Preprocess_OpeningFcn(hObject, eventdata, handles, varargin)
 %               chkOriginal
 %               chkPrefix
 %               txtPrefix
-              set(handles.text5, 'String', 'choose ONE gate you regard as Basal and automatically the rest as Stim and your gates are preferred to be subsampled otherwise the calculation would take a long time');              
+%               set(handles.text5, 'String', 'choose ONE gate you regard as Basal and automatically the rest as Stim and your gates are preferred to be subsampled otherwise the calculation would take a long time');              
+              set(handles.text5, 'String', 'choose half of the gates you regard as Basal and automatically the rest as Stim and your gates are preferred to be subsampled otherwise the calculation would take a long time');              
             end
         end
     end
