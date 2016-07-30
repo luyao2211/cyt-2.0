@@ -3155,19 +3155,21 @@ function createSARA
     end
     
     flag = get(handles.chkScale,'Value');
-    
     if flag
-        
         scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
         scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
         scores = zscore(scores,1);
         scores = reshape(scores,length(stim),length(selected_channels));
+        crange = [-2,2]
+        titles = ' z-scored';
     else
+        crange = [quantile(scores,0.05),quantile(scores, 0.95)];
         scores(scores < quantile(scores, 0.05)) = quantile(scores,0.05);
         scores(scores > quantile(scores, 0.95)) = quantile(scores, 0.95);
         scores = reshape(scores,length(stim),length(selected_channels));
-        scores = zscore(scores',1)';
-
+        titles = ' raw value';
+%         scores = zscore(scores',1)';
+        
     end
 %     scores = 2.5 * sign(scores).* (abs(scores)>2.5) + scores .* (~(abs(scores))>2.5);
     %     To facilitate comparability across samples and signaling phenotypes, 
@@ -3191,6 +3193,7 @@ function createSARA
     colormap jet;
     legend('off');
     colorbar('delete');
+    
     axis auto;
     hold off;
     box on;
@@ -3199,7 +3202,7 @@ function createSARA
     color_map = interpolate_colormap(flip(othercolor('RdBu9')), 11);
     % === plot heat map ===
     imagesc(scores);
-    
+   
 %     show cluster information
     set(gca, 'ytick', 1:length(stim));
 %     if (show_by_cluster_channel)
@@ -3217,14 +3220,14 @@ function createSARA
 %        yticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
     colormap(color_map);    
     colorbar;
-    
+    caxis(crange)
     % show channel information 
     set(gca, 'xtick', []);
     xticklabel_rotate(1:length(selected_channels),90,strcat(channel_names(selected_channels), {' '}));
     
     xlabel('Channels');
 %     title(['SARA z-scores - Basal: ' gates{basal,1}] );
-    title('Perturbation Responses')
+    title(['Perturbation Responses Amplitute' , titles])
     %save?
     
     fprintf('Done SARA \n')
