@@ -1174,7 +1174,8 @@ node_size = node_size * 1.2;
 % initialize annotations
 tree_annotations = [];
 tree_bubble_contour = [];
-save(fullfile(handles.mother_window_handles.directoryname, handles.mother_window_handles.cluster_mst_upsample_filename), 'data', 'local_density', 'marker_names', 'used_markers','idx','mst_tree','node_positions','node_size','tree_annotations','tree_bubble_contour');
+annotation_Names = [];
+save(fullfile(handles.mother_window_handles.directoryname, handles.mother_window_handles.cluster_mst_upsample_filename), 'data', 'local_density', 'marker_names', 'used_markers','idx','mst_tree','node_positions','node_size','tree_annotations','tree_bubble_contour','annotation_Names');
 
 % upsample
 all_clustered_data = data;

@@ -78,6 +78,7 @@ handles.node_positions = node_positions;
 handles.node_size = node_size;
 handles.tree_annotations = tree_annotations;
 handles.tree_bubble_contour = tree_bubble_contour;
+handles.annotation_Names = annotation_Names;
 if exist('user_defined_color_thresholds')
     handles.user_defined_color_thresholds = user_defined_color_thresholds;
 else
@@ -125,11 +126,7 @@ set(handles.listbox_select_a_file,'string',handles.all_existing_files,'value',1)
 set(handles.listbox_select_ref_files,'string',handles.all_existing_files(1),'value',1);
 % % tree annotations
 if ~isempty(handles.tree_annotations)
-    tmp = [];
-    for i=1:length(handles.tree_annotations)
-        tmp{i} = num2str(handles.tree_annotations{i});
-    end
-    set(handles.listbox_annotations,'string',tmp,'value',1);
+    set(handles.listbox_annotations,'string',handles.annotation_Names,'value',1);
 end
 uiwait(handles.figure1);
 
@@ -1116,11 +1113,11 @@ end
 
 % --- Executes on selection change in listbox_annotations.
 function listbox_annotations_Callback(hObject, eventdata, handles)
-tmp = get(handles.listbox_annotations,'string');
-if length(tmp)==0
+tmp = get(handles.listbox_annotations,'value');
+if tmp==0
     return
 end
-handles.mouse_selected_nodes = str2num(tmp{get(handles.listbox_annotations,'value')});
+handles.mouse_selected_nodes = handles.tree_annotations{tmp};
 set(handles.edit_mouse_selected_nodes,'string',num2str(handles.mouse_selected_nodes));
 guidata(hObject, handles);
 axes(handles.Axes_mst); draw_SPADE_tree_when_update(handles);
@@ -1582,9 +1579,11 @@ for k=1:length(handles.tree_bubble_contour)
     handles.tree_bubble_contour{k}=[];
 end
 % update the listbox
+handles.annotation_Names{end+1} = inputdlg('Name the Subpopulation: ','Cell Type', 1);
+handles.annotation_Names{end} = handles.annotation_Names{end}{1};
 tmp = [];
-for i=1:length(handles.tree_annotations)
-    tmp{i} = num2str(handles.tree_annotations{i});
+for i=1:length(handles.annotation_Names)
+    tmp{i} = handles.annotation_Names{i};
 end
 set(handles.listbox_annotations,'string',tmp,'value',length(handles.tree_annotations));
 % update the viz option, no_show
@@ -1602,9 +1601,10 @@ end
 ind_to_remove = get(handles.listbox_annotations,'value');
 handles.tree_annotations(ind_to_remove) = [];
 handles.tree_bubble_contour(ind_to_remove) = [];
+handles.annotation_Names(ind_to_remove) = [];
 tmp = [];
-for i=1:length(handles.tree_annotations)
-    tmp{i} = num2str(handles.tree_annotations{i});
+for i=1:length(handles.annotation_Names)
+    tmp{i} = handles.annotation_Names{i};
 end
 set(handles.listbox_annotations,'string',tmp);
 if ind_to_remove>length(handles.tree_annotations)
@@ -1772,8 +1772,9 @@ node_positions = handles.node_positions;
 node_size = handles.node_size;
 tree_annotations = handles.tree_annotations;
 tree_bubble_contour = handles.tree_bubble_contour;
+annotation_Names = handles.annotation_Names;
 user_defined_color_thresholds = handles.user_defined_color_thresholds;
-save(handles.cluster_mst_upsample_filename,'node_positions','node_size','tree_annotations','tree_bubble_contour','user_defined_color_thresholds','-append');
+save(handles.cluster_mst_upsample_filename,'node_positions','node_size','tree_annotations','tree_bubble_contour','annotation_Names','user_defined_color_thresholds','-append');
 delete(hObject);
 
 
@@ -1799,7 +1800,8 @@ for i=1:length(handles.all_existing_files)
     else
         idx_tmp = handles.all_assign{find(ismember(handles.file_annot,handles.all_existing_files(i))==1)};
         marker_names_tmp = handles.clustering_marker_names;
-        data_tmp = handles.sessionData(1:length(handles.clustering_marker_names)-1,handles.gates{i-1,1});
+        [A,B] = size(handles.sessionData);
+        data_tmp = handles.sessionData(1:A,handles.gates{i-1,1});
     end
     ind = zeros(1,length(idx_tmp));
     for k=1:length(handles.mouse_selected_nodes)
@@ -2015,14 +2017,18 @@ end
 % define node names
 node_names = cell(size(handles.mst_tree,1),1); for k=1:length(node_names), node_names{k} = num2str(k); end
 % standardize tree_annotation_definitions
-tree_annotation_definitions = get(handles.listbox_annotations,'string');
+tmp = [];
+for i=1:length(handles.tree_annotations)
+    tmp{i} = num2str(handles.tree_annotations{i});
+end
+tree_annotation_definitions = tmp';
 for k=1:length(tree_annotation_definitions)
-    elements_in_annotation = str2num(tree_annotation_definitions{k});
-    tree_annotation_definitions{k} = [];
+    elements_in_annotation = tree_annotation_definitions{k};
+    %tree_annotation_definitions{k} = [];
     for m = 1:length(elements_in_annotation)
-        tree_annotation_definitions{k} = [tree_annotation_definitions{k}, num2str(elements_in_annotation(m)), ' '];
+        %tree_annotation_definitions{k} = [tree_annotation_definitions{k}, num2str(elements_in_annotation(m)), ' '];
     end
-    tree_annotation_definitions{k} = tree_annotation_definitions{k}(1:end-1);
+    %tree_annotation_definitions{k} = tree_annotation_definitions{k}(1:end-1);
 end
 % define bubble names
 tree_annotation_names = cell(length(tree_annotation_definitions),1); for k=1:length(tree_annotation_names), tree_annotation_names{k} = ['annotation-',num2str(k)]; end
